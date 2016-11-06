@@ -139,7 +139,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     }
 
     public function p(\PhpParser\Node $node)
-    {        //var_dump('p' . $node->getType());
+    {        //var_dump($node);
         return $this->{'p' . $node->getType()}($node);
     }
 
@@ -207,12 +207,14 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     {
         return parent::pExpr_Assign($node);
     }
-    
-    public function pExpr_BinaryOp_Concat(\PhpParser\Node\Expr\BinaryOp\Concat $node) {
+
+    public function pExpr_BinaryOp_Concat(\PhpParser\Node\Expr\BinaryOp\Concat $node)
+    {
         return $this->pInfixOp('Expr_BinaryOp_Concat', $node->left, ' + ', $node->right);
     }
-    
-    public function pExpr_AssignOp_Concat(\PhpParser\Node\Expr\AssignOp\Concat $node) {
+
+    public function pExpr_AssignOp_Concat(\PhpParser\Node\Expr\AssignOp\Concat $node)
+    {
         return $this->pInfixOp('Expr_AssignOp_Concat', $node->var, ' += ', $node->expr);
     }
 
@@ -264,8 +266,8 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     {
         //use eachWithIndex for key-value pairs
         if (null !== $node->keyVar) {
-            return $this->p($node->expr) .'.eachWithIndex { ' .
-                $this->p($node->valueVar) . ", " . $this->p($node->keyVar) . ' -> '.
+            return $this->p($node->expr) . '.eachWithIndex { ' .
+                $this->p($node->valueVar) . ", " . $this->p($node->keyVar) . ' -> ' .
                 $this->pStmts($node->stmts) . "\n" . '}';
         }
 
@@ -274,6 +276,71 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
             ' in ' . $this->p($node->expr) .
             ') {'
             . $this->pStmts($node->stmts) . "\n" . '}';
+    }
+
+    protected function preprocessNodes(array $nodes)
+    {
+        foreach ($nodes as $node) {
+            $this->replaceTraits($node);
+        }
+
+        return parent::preprocessNodes($nodes);
+    }
+
+    /**
+     * @todo trait predence parameters require knowledge about trait impls.
+     * @param \PhpParser\Node $parent
+     * @return void
+     */
+    private function replaceTraits(\PhpParser\Node $parent): void
+    {
+        $traits = [];
+        $adaptations = [];
+        if ($parent instanceof \PhpParser\Node\Stmt\Class_) {
+            foreach ($parent->stmts as $key => $node) {
+                if ($node instanceof \PhpParser\Node\Stmt\TraitUse) {
+
+                    foreach ($node->adaptations as $adapt) {
+                        $adaptations[] = $adapt;
+                    }
+
+                    foreach ($node->traits as $name) {
+                        $traits[] = implode('.', $name->parts);
+                    }
+                    unset($parent->stmts[$key]);
+                }
+            }
+
+            //add implements for each trait
+            foreach ($traits as $name) {
+                $parent->implements[] = new \PhpParser\Node\Name\FullyQualified($name);
+            }
+
+            //add trait conflict resolution
+            foreach ($adaptations as $a) {
+                $parent->stmts[] = $this->adaptoToClassMethod($a);
+            }
+
+            return;
+        }
+        if (property_exists($parent, "stmts"))
+            foreach ($parent->stmts as $key => $node) {
+                $this->replaceTraits($node);
+            }
+    }
+
+    private function adaptoToClassMethod(\PhpParser\Node\Stmt\TraitUseAdaptation\Precedence $prec): \PhpParser\Node\Stmt\ClassMethod
+    {
+        $func = new \PhpParser\Node\Stmt\ClassMethod($prec->method);
+        $func->stmts[] = new \PhpParser\Node\Expr\FuncCall(
+            new \PhpParser\Node\Name([$prec->trait . ".super." . $prec->method])
+        );
+        return $func;
+    }
+
+    public function pName_FullyQualified(\PhpParser\Node\Name\FullyQualified $node): string
+    {
+        return $this->asPackage(parent::pName_FullyQualified($node));
     }
 
 }

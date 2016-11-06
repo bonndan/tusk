@@ -232,6 +232,41 @@ foreach ($arr as $key => $value) {
         $groovy = $this->parse($code);
         $this->assertContains('test += "two"', $groovy);
     }
+    
+    public function testTraits()
+    {
+        $code = "namespace Test\A;
+class A implements \ArrayAccess {
+    use BTrait;
+    use CTrait;
+}";
+
+        $groovy = $this->parse($code);
+        $this->assertContains('class A implements ArrayAccess, BTrait, CTrait', $groovy);
+        $this->assertNotContains('use BTrait;', $groovy);
+        $this->assertNotContains('use CTrait;', $groovy);
+    }
+    
+    public function testTraitsConflictResolution()
+    {
+        $code = "class Talker {
+    use A, B {
+        B::smallTalk insteadof A;
+        A::bigTalk insteadof B;
+    }
+}";
+
+        $groovy = $this->parse($code);
+        $this->assertContains('class Talker implements A, B', $groovy);
+        $this->assertNotContains('use A, B {
+        B::smallTalk insteadof A;
+        A::bigTalk insteadof B;
+    }', $groovy);
+        
+        $this->assertContains('smallTalk(){B.super.smallTalk()}', $this->normalizeInvisibleChars($groovy));
+        $this->assertContains('bigTalk(){A.super.bigTalk()}', $this->normalizeInvisibleChars($groovy));
+        $this->assertNotContains('function', $groovy);
+    }
 
     /**
      * @param string $code without leading <?php 
@@ -243,4 +278,8 @@ foreach ($arr as $key => $value) {
         return $this->printer->prettyPrint($stmts);
     }
 
+    private function normalizeInvisibleChars(string $str) : string
+    {
+        return  str_replace(PHP_EOL, "",  str_replace("\t", "", str_replace(" ", "", $str)));
+    }
 }
