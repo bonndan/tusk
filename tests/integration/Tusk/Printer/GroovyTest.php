@@ -268,6 +268,48 @@ class A implements \ArrayAccess {
         $this->assertNotContains('function', $groovy);
     }
 
+    public function testParentCall()
+    {
+        $code = "
+class A {
+    
+    protected function a() {
+        return parent::a();
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains('super.a()', $groovy);
+        $this->assertNotContains('parent::a()', $groovy);
+    }
+    
+    public function testStaticClassVar()
+    {
+        $code = "
+class A {
+    
+    protected function a() {
+        return B::\$b;
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains('B.b', $groovy);
+        $this->assertNotContains('B::$b', $groovy);
+    }
+    
+    public function testStaticClassMethod()
+    {
+        $code = "
+class A {
+    
+    protected function a() {
+        return B::b();
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains('B.b()', $groovy);
+        $this->assertNotContains('B::b()', $groovy);
+    }
+    
     /**
      * @param string $code without leading <?php 
      * @return string

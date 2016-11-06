@@ -343,4 +343,25 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         return $this->asPackage(parent::pName_FullyQualified($node));
     }
 
+    public function pExpr_StaticCall(\PhpParser\Node\Expr\StaticCall $node)
+    {
+        $buffer = '';
+        if ($node->class instanceof \PhpParser\Node\Name && $node->class->parts[0] == 'parent')
+            $buffer .= 'super';
+        else
+            $buffer .= $this->pDereferenceLhs($node->class);
+        
+        return $buffer . '.'
+             . ($node->name instanceof Expr
+                ? ($node->name instanceof Expr\Variable
+                   ? $this->p($node->name)
+                   : '{' . $this->p($node->name) . '}')
+                : $node->name)
+             . '(' . $this->pCommaSeparated($node->args) . ')';
+    }
+    
+    public function pExpr_StaticPropertyFetch(\PhpParser\Node\Expr\StaticPropertyFetch $node)
+    {
+        return $this->pDereferenceLhs($node->class) . '.' . $this->pObjectProperty($node->name);
+    }
 }
