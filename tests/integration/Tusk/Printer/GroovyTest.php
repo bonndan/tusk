@@ -173,6 +173,65 @@ class abc {
         $this->assertContains('package Test.A', $groovy);
         $this->assertNotContains('namespace Test\A', $groovy);
     }
+    
+    public function testForLoop()
+    {
+        $code = '
+for ($i=0;$i<10;$i++) {
+    continue;
+}';
+
+        $groovy = $this->parse($code);
+        $this->assertContains('for (int i = 0; i < 10; i++)', $groovy);
+        $this->assertNotContains('for ($i=0;$i<10;$i++)', $groovy);
+    }
+    
+    public function testForEachLoop()
+    {
+        $code = '
+            $arr = [];
+foreach ($arr as $value) {
+    continue;
+}';
+
+        $groovy = $this->parse($code);
+        $this->assertContains('for (value in arr) {', $groovy);
+        $this->assertNotContains('for ($i=0;$i<10;$i++)', $groovy);
+    }
+    
+    public function testForEachLoopWithKey()
+    {
+        $code = '
+            $arr = [];
+foreach ($arr as $key => $value) {
+    continue;
+}';
+
+        $groovy = $this->parse($code);
+        $this->assertContains('arr.eachWithIndex { value, key ->', $groovy);
+        $this->assertNotContains('for ($i=0;$i<10;$i++)', $groovy);
+    }
+    
+    public function testStringConcat()
+    {
+        $code = '
+            $test = "one" . "two";
+';
+
+        $groovy = $this->parse($code);
+        $this->assertContains('test = "one" + "two"', $groovy);
+    }
+    
+    public function testVarConcat()
+    {
+        $code = '
+            $test = "one";
+            $test .= "two";
+';
+
+        $groovy = $this->parse($code);
+        $this->assertContains('test += "two"', $groovy);
+    }
 
     /**
      * @param string $code without leading <?php 

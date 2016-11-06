@@ -65,11 +65,11 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         $buffer = (0 === $node->type ? 'var ' : $this->pModifiers($node->type));
 
         if (count($node->props) == 1) {
-            
+
             $type = $this->getType($node->props[0]->default);
             if ($type)
                 return $buffer . $type . $this->p($node->props[0]) . PHP_EOL;
-            
+
 
             $tags = $this->getNodeDocBlockTags($node);
             if (isset($tags[0])) {
@@ -77,7 +77,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
             }
         }
 
-        return parent::pStmt_Property($node);
+        return $buffer . $this->pCommaSeparated($node->props);
     }
 
     private function getType($typeObject): string
@@ -89,15 +89,15 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         if ($typeObject instanceof \PhpParser\Node\Scalar\String_) {
             return "String ";
         }
-        
+
         /**
          * @todo support key-value type annotation which is supported by phpdocumentor
          */
         if ($typeObject instanceof \phpDocumentor\Reflection\DocBlock\Tags\Var_) {
-            
+
             $raw = (string) $typeObject->getType();
             $buffer = (strpos($raw, '[]') !== false) ? "[] " : ' ';
-            
+
             switch (str_replace('[]', '', $raw)) {
                 case "string": return "String" . $buffer;
                 case "int": return "Integer" . $buffer;
@@ -107,8 +107,8 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
 
         return '';
     }
-    
-    private function asPackage(string $namespaced) : string
+
+    private function asPackage(string $namespaced): string
     {
         return ltrim(str_replace("\\", ".", $namespaced), '.');
     }
@@ -207,12 +207,20 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     {
         return parent::pExpr_Assign($node);
     }
+    
+    public function pExpr_BinaryOp_Concat(\PhpParser\Node\Expr\BinaryOp\Concat $node) {
+        return $this->pInfixOp('Expr_BinaryOp_Concat', $node->left, ' + ', $node->right);
+    }
+    
+    public function pExpr_AssignOp_Concat(\PhpParser\Node\Expr\AssignOp\Concat $node) {
+        return $this->pInfixOp('Expr_AssignOp_Concat', $node->var, ' += ', $node->expr);
+    }
 
     public function pExpr_PropertyFetch(\PhpParser\Node\Expr\PropertyFetch $node)
     {
         return $this->pDereferenceLhs($node->var) . '.' . $this->pObjectProperty($node->name);
     }
-    
+
     /**
      * Pretty prints an array of nodes (statements) and indents them optionally.
      *
@@ -221,7 +229,8 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
      *
      * @return string Pretty printed statements
      */
-    protected function pStmts(array $nodes, $indent = true) {
+    protected function pStmts(array $nodes, $indent = true)
+    {
         $result = '';
         foreach ($nodes as $node) {
             $comments = $node->getAttribute('comments', array());
@@ -241,4 +250,30 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
             return $result;
         }
     }
+
+    public function pStmt_For(\PhpParser\Node\Stmt\For_ $node)
+    {
+        if ($node->init[0] instanceof \PhpParser\Node\Expr\Assign) {
+            $node->init[0]->var->name = "int " . $node->init[0]->var->name;
+        }
+
+        return parent::pStmt_For($node);
+    }
+
+    public function pStmt_Foreach(\PhpParser\Node\Stmt\Foreach_ $node)
+    {
+        //use eachWithIndex for key-value pairs
+        if (null !== $node->keyVar) {
+            return $this->p($node->expr) .'.eachWithIndex { ' .
+                $this->p($node->valueVar) . ", " . $this->p($node->keyVar) . ' -> '.
+                $this->pStmts($node->stmts) . "\n" . '}';
+        }
+
+        return 'for (' .
+            $this->p($node->valueVar) .
+            ' in ' . $this->p($node->expr) .
+            ') {'
+            . $this->pStmts($node->stmts) . "\n" . '}';
+    }
+
 }
