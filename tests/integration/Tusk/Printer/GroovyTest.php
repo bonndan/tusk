@@ -310,6 +310,67 @@ class A {
         $this->assertNotContains('B::b()', $groovy);
     }
     
+    public function testChaining()
+    {
+        $code = "
+class A {
+    
+    private \$something;
+        
+    protected function a() {
+        return \$this->something->getOtherThing()->toString();
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains('something.getOtherThing().toString()', $groovy);
+        $this->assertNotContains('$this->something->getOtherThing()->toString()', $groovy);
+    }
+    
+    public function testDynamicCall()
+    {
+        $code = "
+class A {
+    
+    protected function a(\$method) {
+        return \$this->\$method();
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains('this."$method"()', $groovy);
+        $this->assertNotContains('$this->$method()', $groovy);
+    }
+    
+    public function testDynamicAccess()
+    {
+        $code = "
+class A {
+    
+    private \$a;
+    private \$b;
+    
+    protected function a(\$arg) {
+        return \$this->\$arg;
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains('this."$arg"', $groovy);
+        $this->assertNotContains('$this->$arg', $groovy);
+    }
+    
+    public function testMagicCall()
+    {
+        $code = "
+class A {
+    
+    public function __call(\$name, \$arguments) {
+        return 'test';
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains('def methodMissing(String name, def arguments)', $groovy);
+        $this->assertNotContains('__call', $groovy);
+    }
+    
     /**
      * @param string $code without leading <?php 
      * @return string

@@ -154,16 +154,24 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         return $node->name
             . (null !== $node->default ? ' = ' . $this->p($node->default) : '');
     }
-
+    
     /**
      * Writes methods, special constructor handling.
      * 
      * @param \PhpParser\Node\Stmt\ClassMethod $node
      * @return type
-     * @throws \RuntimeException
      */
     public function pStmt_ClassMethod(\PhpParser\Node\Stmt\ClassMethod $node)
     {
+        if ($node->name == '__call') {
+            $node->name = "methodMissing";
+            $node->params = [];
+            $node->params[0] = new \PhpParser\Node\Param('name');
+            $node->params[0]->type = 'String';
+            $node->params[1] = new \PhpParser\Node\Param('arguments');
+            $node->params[1]->type = 'def';
+        }
+        
         if (isset($node->isConstructor) && $node->isConstructor) {
             $buffer = $node->name;
         } else {
@@ -191,13 +199,10 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
             . ($node->default ? ' = ' . $this->p($node->default) : '');
     }
 
-    /**
-     * @todo handle expressions
-     */
     public function pExpr_Variable(\PhpParser\Node\Expr\Variable $node)
     {
-        if ($node->name instanceof Expr) {
-            return 'unsupported dynamic expression {' . $this->p($node->name) . '}';
+        if ($node->name instanceof \PhpParser\Node\Expr) {
+            return '"$' . $this->p($node->name) . '"';
         } else {
             return $node->name;
         }
@@ -363,5 +368,19 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     public function pExpr_StaticPropertyFetch(\PhpParser\Node\Expr\StaticPropertyFetch $node)
     {
         return $this->pDereferenceLhs($node->class) . '.' . $this->pObjectProperty($node->name);
+    }
+    
+    public function pExpr_MethodCall(\PhpParser\Node\Expr\MethodCall $node)
+    {
+        return $this->pDereferenceLhs($node->var) . '.' . $this->pObjectProperty($node->name)
+             . '(' . $this->pCommaSeparated($node->args) . ')';
+    }
+    
+    protected function pObjectProperty($node) {
+        if ($node instanceof \PhpParser\Node\Expr) {
+            return '"$' . $this->p($node) . '"';
+        } else {
+            return $node;
+        }
     }
 }
