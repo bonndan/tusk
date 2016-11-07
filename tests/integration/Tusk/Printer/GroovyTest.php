@@ -371,7 +371,7 @@ class A {
         $this->assertNotContains('__call', $groovy);
     }
     
-    public function testParamTypeDocComment()
+    public function testParamTypeDocComment1()
     {
         $code = "
 class A {
@@ -389,6 +389,37 @@ class A {
         $this->assertContains('public String test(String name, def arguments)', $groovy);
     }
     
+    public function testParamTypeDocComment2()
+    {
+        $code = "
+class A {
+    
+    /**
+     * @param bool \$flag
+     * @return void
+     */
+    public function test(\$flag) {
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains('public void test(bool flag)', $groovy);
+    }
+    
+    public function testCatch()
+    {
+        $code = "
+class A {
+    
+    public function test(\$flag) {
+        try {
+            test();
+        } catch (Error \$e) {
+        }
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains('catch (Error e)', $groovy);
+    }
     /**
      * @param string $code without leading <?php 
      * @return string

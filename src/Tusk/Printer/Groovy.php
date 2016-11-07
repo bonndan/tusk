@@ -393,6 +393,12 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         return $this->pDereferenceLhs($node->var) . '.' . $this->pObjectProperty($node->name)
             . '(' . $this->pCommaSeparated($node->args) . ')';
     }
+    
+    public function pStmt_Catch(\PhpParser\Node\Stmt\Catch_ $node)
+    {
+        return ' catch (' . $this->p($node->type) . ' ' . $node->var . ') {'
+             . $this->pStmts($node->stmts) . "\n" . '}';
+    }
 
     protected function pObjectProperty($node)
     {
