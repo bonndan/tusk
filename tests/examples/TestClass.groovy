@@ -20,7 +20,7 @@ class TestClass
      * 
      * @param string $arg
      */
-    public TestClass(arg)
+    public TestClass(String arg)
     {
         this.arg = arg
     }
