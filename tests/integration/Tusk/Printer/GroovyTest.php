@@ -420,6 +420,25 @@ class A {
         $groovy = $this->parse($code);
         $this->assertContains('catch (Error e)', $groovy);
     }
+    
+    public function testUseImport()
+    {
+        $code = "
+            
+use B\BClass;
+
+class A {
+    
+    public function test(BClass \$a) {
+
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains('import B.BClass', $groovy);
+        $this->assertNotContains('use B\BClass', $groovy);
+    }
+    
+    
     /**
      * @param string $code without leading <?php 
      * @return string

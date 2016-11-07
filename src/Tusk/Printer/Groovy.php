@@ -365,6 +365,11 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         return $func;
     }
 
+    public function pName(\PhpParser\Node\Name $node)
+    {
+        return $this->asPackage(parent::pName($node));
+    }
+    
     public function pName_FullyQualified(\PhpParser\Node\Name\FullyQualified $node): string
     {
         return $this->asPackage(parent::pName_FullyQualified($node));
@@ -398,6 +403,33 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     {
         return ' catch (' . $this->p($node->type) . ' ' . $node->var . ') {'
              . $this->pStmts($node->stmts) . "\n" . '}';
+    }
+    
+    public function pStmt_Use(\PhpParser\Node\Stmt\Use_ $node)
+    {
+        return 'import ' . $this->pUseType($node->type)
+             . $this->asPackage($this->pCommaSeparated($node->uses));
+    }
+    
+    /**
+     * @todo println is not echo!
+     */
+    public function pStmt_Echo(\PhpParser\Node\Stmt\Echo_ $node)
+    {
+        return 'println ' . $this->pImplode($node->exprs, ' + ');;
+    }
+    
+    public function pExpr_ClassConstFetch(\PhpParser\Node\Expr\ClassConstFetch $node)
+    {
+         return $this->p($node->class) . '.' . $node->name;
+    }
+    
+    /**
+     * @todo seek equivalent in groovy. import static?
+     */
+    private function pUseType($type) {
+        return $type === \PhpParser\Node\Stmt\Use_::TYPE_FUNCTION ? 'function '
+            : ($type === \PhpParser\Node\Stmt\Use_::TYPE_CONSTANT ? 'const ' : '');
     }
 
     protected function pObjectProperty($node)
