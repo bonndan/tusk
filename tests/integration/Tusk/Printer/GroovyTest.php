@@ -371,6 +371,24 @@ class A {
         $this->assertNotContains('__call', $groovy);
     }
     
+    public function testParamTypeDocComment()
+    {
+        $code = "
+class A {
+    
+    /**
+     * @param string \$name
+     * @param array \$arguments
+     * @return string
+     */
+    public function test(\$name, \$arguments) {
+        return 'test';
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains('public String test(String name, def arguments)', $groovy);
+    }
+    
     /**
      * @param string $code without leading <?php 
      * @return string

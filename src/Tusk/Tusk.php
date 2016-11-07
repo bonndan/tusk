@@ -6,16 +6,21 @@ use \PhpParser\Error;
 use \PhpParser\ParserFactory;
 
 /**
- * Description of Tusk
+ * Tusk entry point.
  *
  * 
  */
 class Tusk
 {
 
-    public function run()
+    /**
+     * Converts a php source file into groovy.
+     * 
+     * @param string $file
+     */
+    public function run(string $file)
     {
-        $code = file_get_contents(dirname(__DIR__, 2) . '/test/examples/TestClass.php');
+        $code = file_get_contents($file);
         $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
         $printer = new Printer\Groovy();
         

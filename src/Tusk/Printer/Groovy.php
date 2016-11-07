@@ -68,12 +68,12 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
 
             $type = $this->getType($node->props[0]->default);
             if ($type)
-                return $buffer . $type . $this->p($node->props[0]) . PHP_EOL;
+                return $buffer . $type . ' ' . $this->p($node->props[0]) . PHP_EOL;
 
 
             $tags = $this->getNodeDocBlockTags($node);
             if (isset($tags[0])) {
-                return $buffer . $this->getType($tags[0]) . $this->p($node->props[0]) . PHP_EOL;
+                return $buffer . $this->getType($tags[0]) .' ' . $this->p($node->props[0]) . PHP_EOL;
             }
         }
 
@@ -83,25 +83,28 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     private function getType($typeObject): string
     {
         if ($typeObject instanceof \PhpParser\Node\Scalar\LNumber) {
-            return "Integer ";
+            return "Integer";
         }
 
         if ($typeObject instanceof \PhpParser\Node\Scalar\String_) {
-            return "String ";
+            return "String";
         }
 
         /**
          * @todo support key-value type annotation which is supported by phpdocumentor
          */
-        if ($typeObject instanceof \phpDocumentor\Reflection\DocBlock\Tags\Var_) {
+        if ($typeObject instanceof \phpDocumentor\Reflection\DocBlock\Tags\Var_
+            || $typeObject instanceof \phpDocumentor\Reflection\DocBlock\Tags\Param
+            || $typeObject instanceof \phpDocumentor\Reflection\DocBlock\Tags\Return_
+        ) {
 
-            $raw = (string) $typeObject->getType();
-            $buffer = (strpos($raw, '[]') !== false) ? "[] " : ' ';
-
+            $raw = (string) $typeObject->getType(); 
+            $buffer = (strpos($raw, '[]') !== false) ? "[]" : '';
             switch (str_replace('[]', '', $raw)) {
                 case "string": return "String" . $buffer;
                 case "int": return "Integer" . $buffer;
-                default : return $this->asPackage($raw) . ' ';
+                case "array": return "def";
+                default : return $this->asPackage($raw) . '';
             }
         }
 
@@ -113,7 +116,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         return ltrim(str_replace("\\", ".", $namespaced), '.');
     }
 
-    private function getNodeDocBlockTags(\PhpParser\Node\Stmt\Property $node): array
+    private function getNodeDocBlockTags(\PhpParser\Node\Stmt $node): array
     {
         $comments = $node->getAttributes('comments');
         if ($comments && isset($comments['comments'][0])) {
@@ -154,7 +157,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         return $node->name
             . (null !== $node->default ? ' = ' . $this->p($node->default) : '');
     }
-    
+
     /**
      * Writes methods, special constructor handling.
      * 
@@ -171,17 +174,36 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
             $node->params[1] = new \PhpParser\Node\Param('arguments');
             $node->params[1]->type = 'def';
         }
-        
+
+
+
+        $tags = $this->getNodeDocBlockTags($node);
+        foreach ($tags as $tag) {
+
+            if ($tag instanceof \phpDocumentor\Reflection\DocBlock\Tags\Param) {
+                foreach ($node->params as $param) {
+                    if ($param->name == $tag->getVariableName()) {
+                        $param->type = $this->getType($tag);
+                    }
+                }
+            }
+
+            if ($tag instanceof \phpDocumentor\Reflection\DocBlock\Tags\Return_) {
+                $type = $this->getType($tag);             
+                if ($type)
+                    $node->returnType = $type;
+            }
+        }
+
         if (isset($node->isConstructor) && $node->isConstructor) {
             $buffer = $node->name;
         } else {
-            $buffer = 'def ' . $node->name;
+            $buffer = (null !== $node->returnType ? $this->pType($node->returnType) . ' ': 'def ') . $node->name;
         }
-
+        
         return $this->pModifiers($node->type)
             . $buffer
             . '(' . $this->pCommaSeparated($node->params) . ')'
-            . (null !== $node->returnType ? ' : ' . $this->pType($node->returnType) : '')
             . (null !== $node->stmts ? "\n" . '{' . $this->pStmts($node->stmts) . "\n" . '}' : ';');
     }
 
@@ -355,32 +377,30 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
             $buffer .= 'super';
         else
             $buffer .= $this->pDereferenceLhs($node->class);
-        
+
         return $buffer . '.'
-             . ($node->name instanceof Expr
-                ? ($node->name instanceof Expr\Variable
-                   ? $this->p($node->name)
-                   : '{' . $this->p($node->name) . '}')
-                : $node->name)
-             . '(' . $this->pCommaSeparated($node->args) . ')';
+            . ($node->name instanceof Expr ? ($node->name instanceof Expr\Variable ? $this->p($node->name) : '{' . $this->p($node->name) . '}') : $node->name)
+            . '(' . $this->pCommaSeparated($node->args) . ')';
     }
-    
+
     public function pExpr_StaticPropertyFetch(\PhpParser\Node\Expr\StaticPropertyFetch $node)
     {
         return $this->pDereferenceLhs($node->class) . '.' . $this->pObjectProperty($node->name);
     }
-    
+
     public function pExpr_MethodCall(\PhpParser\Node\Expr\MethodCall $node)
     {
         return $this->pDereferenceLhs($node->var) . '.' . $this->pObjectProperty($node->name)
-             . '(' . $this->pCommaSeparated($node->args) . ')';
+            . '(' . $this->pCommaSeparated($node->args) . ')';
     }
-    
-    protected function pObjectProperty($node) {
+
+    protected function pObjectProperty($node)
+    {
         if ($node instanceof \PhpParser\Node\Expr) {
             return '"$' . $this->p($node) . '"';
         } else {
             return $node;
         }
     }
+
 }
