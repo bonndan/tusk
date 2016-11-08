@@ -142,7 +142,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     }
 
     public function p(\PhpParser\Node $node)
-    {        //var_dump($node);
+    {    
         return $this->{'p' . $node->getType()}($node);
     }
 
@@ -457,6 +457,16 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         return $this->pInfixOp('Expr_BinaryOp_LogicalXor', $node->left, ' ^ ', $node->right);
     }
 
+    public function pExpr_Array(\PhpParser\Node\Expr\Array_ $node)
+    {
+        return '[' . $this->pCommaSeparated($node->items) . ']';
+    }
+    
+    public function pExpr_ArrayItem(\PhpParser\Node\Expr\ArrayItem $node)
+    {
+        return (null !== $node->key ? $node->key->value . ': ' : '') . $this->p($node->value);
+    }
+    
     /**
      * @todo seek equivalent in groovy. import static?
      */

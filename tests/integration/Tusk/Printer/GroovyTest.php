@@ -499,6 +499,22 @@ class A {
         $this->assertNotContains("a and b or c", $groovy);
     }
     
+    public function testIntegerArray()
+    {
+        $code = "\$b = array(1,2,3,5);";
+        $groovy = $this->parse($code);
+        $this->assertContains("b = [1, 2, 3, 5]", $groovy);
+        $this->assertNotContains("array", $groovy);
+    }
+    
+    public function testFlatAssocArrayIsMap()
+    {
+        $code = "\$b = array('a' => 1, 'b' => 2);";
+        $groovy = $this->parse($code);
+        $this->assertContains("b = [a: 1, b: 2]", $groovy);
+        $this->assertNotContains("array('a' => 1, 'b' => 2)", $groovy);
+    }
+    
     /**
      * @param string $code without leading <?php 
      * @return string
