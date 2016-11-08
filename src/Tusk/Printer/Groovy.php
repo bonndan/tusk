@@ -442,6 +442,21 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         return $this->pInfixOp('Expr_BinaryOp_Coalesce', $node->left, ' ?: ', $node->right); 
     }
     
+    public function pExpr_BinaryOp_LogicalAnd(\PhpParser\Node\Expr\BinaryOp\LogicalAnd $node)
+    {
+        return $this->pInfixOp('Expr_BinaryOp_LogicalAnd', $node->left, ' && ', $node->right);
+    }
+
+    public function pExpr_BinaryOp_LogicalOr(\PhpParser\Node\Expr\BinaryOp\LogicalOr $node)
+    {
+        return $this->pInfixOp('Expr_BinaryOp_LogicalOr', $node->left, ' || ', $node->right);
+    }
+    
+    public function pExpr_BinaryOp_LogicalXor(\PhpParser\Node\Expr\BinaryOp\LogicalXor $node)
+    {
+        return $this->pInfixOp('Expr_BinaryOp_LogicalXor', $node->left, ' ^ ', $node->right);
+    }
+
     /**
      * @todo seek equivalent in groovy. import static?
      */

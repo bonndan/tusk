@@ -482,6 +482,23 @@ class A {
         $this->assertNotContains("b ?? 'fallback'", $groovy);
     }
     
+    public function testLiteralAndOrXor()
+    {
+        $code = "
+class A {
+    
+    public function test(\$a, \$b, \$c) {
+        if (\$a xor \$b)
+            return \$a and \$b or \$c;
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains("a ^ b", $groovy);
+        $this->assertContains("a && b || c", $groovy);
+        $this->assertNotContains("a xor b", $groovy);
+        $this->assertNotContains("a and b or c", $groovy);
+    }
+    
     /**
      * @param string $code without leading <?php 
      * @return string
