@@ -425,6 +425,19 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     }
     
     /**
+     * @todo use "is" if object comparison is wanted
+     */
+    public function pExpr_BinaryOp_Identical(\PhpParser\Node\Expr\BinaryOp\Identical $node)
+    {
+        return $this->pInfixOp('Expr_BinaryOp_Identical', $node->left, ' == ', $node->right);
+    }
+    
+    public function pExpr_BinaryOp_NotIdentical(\PhpParser\Node\Expr\BinaryOp\NotIdentical $node)
+    {
+        return $this->pInfixOp('Expr_BinaryOp_NotIdentical', $node->left, ' != ', $node->right);
+    }
+    
+    /**
      * @todo seek equivalent in groovy. import static?
      */
     private function pUseType($type) {

@@ -438,6 +438,35 @@ class A {
         $this->assertNotContains('use B\BClass', $groovy);
     }
     
+    public function testStrictComparison()
+    {
+        $code = "
+class A {
+    
+    public function test(\$flag) {
+        if (\$flag === this)
+            return;
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains('flag == this', $groovy);
+        $this->assertNotContains('===', $groovy);
+    }
+    
+    public function testStrictComparison2()
+    {
+        $code = "
+class A {
+    
+    public function test(\$flag) {
+        if (\$flag !== this)
+            return;
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains('flag != this', $groovy);
+        $this->assertNotContains('!==', $groovy);
+    }
     
     /**
      * @param string $code without leading <?php 
