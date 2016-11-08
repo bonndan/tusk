@@ -437,6 +437,11 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         return $this->pInfixOp('Expr_BinaryOp_NotIdentical', $node->left, ' != ', $node->right);
     }
     
+    public function pExpr_BinaryOp_Coalesce(\PhpParser\Node\Expr\BinaryOp\Coalesce $node)
+    {
+        return $this->pInfixOp('Expr_BinaryOp_Coalesce', $node->left, ' ?: ', $node->right); 
+    }
+    
     /**
      * @todo seek equivalent in groovy. import static?
      */

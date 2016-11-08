@@ -468,6 +468,20 @@ class A {
         $this->assertNotContains('!==', $groovy);
     }
     
+    public function testNullCoalescing()
+    {
+        $code = "
+class A {
+    
+    public function test(\$b) {
+        \$a = \$b ?? 'fallback';
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains("b ?: 'fallback'", $groovy);
+        $this->assertNotContains("b ?? 'fallback'", $groovy);
+    }
+    
     /**
      * @param string $code without leading <?php 
      * @return string
