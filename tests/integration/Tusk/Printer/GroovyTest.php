@@ -8,18 +8,14 @@ use PHPUnit\Framework\TestCase;
  */
 class GroovyTest extends TestCase
 {
-
     /**
-     * system under test
-     * @var Tusk\Printer\Groovy
+     * @var Tusk\Tusk
      */
-    private $printer;
-    private $parser;
+    private $tusk;
 
     protected function setUp()
     {
-        $this->printer = new Tusk\Printer\Groovy();
-        $this->parser = (new PhpParser\ParserFactory)->create(PhpParser\ParserFactory::PREFER_PHP7);
+        $this->tusk = new Tusk\Tusk();
     }
 
     public function testClassConstString()
@@ -515,14 +511,61 @@ class A {
         $this->assertNotContains("array('a' => 1, 'b' => 2)", $groovy);
     }
     
+    public function testYieldNotSupported()
+    {
+        $code = "function gen() {
+    for (\$i = 1; \$i <= 3; \$i++) {
+        yield \$i;
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("throw new GroovyException('(yield i) is not supported')", $groovy);
+    }
+    
+    public function testDestructor()
+    {
+        $code = "
+class A {
+    
+    public function __destruct() {
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains("public def close", $groovy);
+        $this->assertNotContains("__destruct", $groovy);
+    }
+    
+    public function testDie()
+    {
+        $code = "die();";
+        $groovy = $this->parse($code);
+        $this->assertContains("throw new GroovyException('die')", $groovy);
+        $this->assertNotContains("die()", $groovy);
+    }
+    
+    public function testDieWithArg()
+    {
+        $code = "die('no');";
+        $groovy = $this->parse($code);
+        $this->assertContains("throw new GroovyException('no')", $groovy);
+        $this->assertNotContains("die('no')", $groovy);
+    }
+    
+    public function testExit1()
+    {
+        $code = "exit(1);";
+        $groovy = $this->parse($code);
+        $this->assertContains("System.exit(1)", $groovy);
+    }
+    
     /**
      * @param string $code without leading <?php 
      * @return string
      */
     private function parse(string $code): string
     {
-        $stmts = $this->parser->parse("<?php " . $code);
-        return $this->printer->prettyPrint($stmts);
+        return $this->tusk->toGroovy($this->tusk->getStatements("<?php " . $code));
     }
 
     private function normalizeInvisibleChars(string $str) : string

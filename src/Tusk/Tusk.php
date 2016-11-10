@@ -2,7 +2,6 @@
 
 namespace Tusk;
 
-use \PhpParser\Error;
 use \PhpParser\ParserFactory;
 
 /**
@@ -21,16 +20,25 @@ class Tusk
     public function run(string $file)
     {
         $code = file_get_contents($file);
-        $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
+        echo $this->toGroovy($this->getStatements($code));
+    }
+
+    public function toGroovy(array $statements)
+    {
         $printer = new Printer\Groovy();
-        
-        try {
-            $stmts = $parser->parse($code);
-            echo $printer->prettyPrint($stmts);
-        }
-        catch (Error $e) {
-            echo 'Parse Error: ', $e->getMessage();
-        }
+        return $printer->prettyPrint($statements);
+    }
+
+    public function getStatements(string $code): array
+    {
+        $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
+
+        $traverser = new \PhpParser\NodeTraverser();
+        $traverser->addVisitor(new NodeVisitor\Destruct());
+
+        $stmts = $parser->parse($code);
+        $stmts = $traverser->traverse($stmts);
+        return $stmts;
     }
 
 }

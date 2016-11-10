@@ -14,7 +14,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
      * @var \phpDocumentor\Reflection\DocBlockFactory
      */
     private $docblockFactory;
-
+    
     public function __construct(array $options = array())
     {
         parent::__construct($options);
@@ -142,7 +142,8 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     }
 
     public function p(\PhpParser\Node $node)
-    {    
+    {
+        //var_dump($node);
         return $this->{'p' . $node->getType()}($node);
     }
 
@@ -467,6 +468,20 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         return (null !== $node->key ? $node->key->value . ': ' : '') . $this->p($node->value);
     }
     
+    public function pExpr_Yield(\PhpParser\Node\Expr\Yield_ $node)
+    {
+        return $this->getException(parent::pExpr_Yield($node) . ' is not supported');
+    }
+    
+    public function pExpr_Exit(\PhpParser\Node\Expr\Exit_ $node)
+    {
+        $kind = $node->getAttribute('kind', \PhpParser\Node\Expr\Exit_::KIND_DIE);
+        if ($kind === \PhpParser\Node\Expr\Exit_::KIND_EXIT)
+            return "System.exit(" . (null !== $node->expr ? $this->p($node->expr) : '') . ")";
+            
+        return "throw new GroovyException(" . (null !== $node->expr ? $this->p($node->expr) : "'die'") . ")";
+    }
+    
     /**
      * @todo seek equivalent in groovy. import static?
      */
@@ -484,4 +499,8 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         }
     }
 
+    private function getException(string $unsupported)
+    {
+        return "throw new GroovyException('$unsupported')";
+    }
 }
