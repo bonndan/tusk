@@ -41,6 +41,32 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         //anything else
         return $buffer . $this->pCommaSeparated($node->consts) . ';';
     }
+    
+    /**
+     * @todo prevent multiple same imports
+     */
+    public function pStmt_Const(\PhpParser\Node\Stmt\Const_ $node)
+    {
+        $buffer = "import groovy.transform.Field" . PHP_EOL . '@Field ';
+
+        //add type if one const
+        if (count($node->consts) == 1) {
+            if ($node->consts[0]->value instanceof \PhpParser\Node\Scalar\LNumber) {
+                $buffer .= "Integer ";
+                $buffer .= $this->p($node->consts[0]);
+            }
+
+            if ($node->consts[0]->value instanceof \PhpParser\Node\Scalar\String_) {
+                $buffer .= "String ";
+                $buffer .= $this->p($node->consts[0]);
+            }
+            
+            return $buffer;
+        } 
+
+        //anything else
+        return $buffer . $this->pCommaSeparated($node->consts) . ';';
+    }
 
     /**
      * Assigns the class name to the cosntructor function.

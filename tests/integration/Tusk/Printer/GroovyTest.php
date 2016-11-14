@@ -575,6 +575,15 @@ class A {
         $this->assertNotContains("unset", $groovy);
     }
     
+    public function testGlobalConst()
+    {
+        $code = "const A = 'b';";
+        $groovy = $this->parse($code);
+        $this->assertContains("@Field String A = 'b'", $groovy);
+        $this->assertContains("import groovy.transform.Field", $groovy);
+        $this->assertNotContains("const", $groovy);
+    }
+    
     /**
      * @param string $code without leading <?php 
      * @return string
