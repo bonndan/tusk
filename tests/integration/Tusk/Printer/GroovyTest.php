@@ -559,6 +559,22 @@ class A {
         $this->assertContains("System.exit(1)", $groovy);
     }
     
+    public function testCastArray()
+    {
+        $code = "\$tmp = (array)\$x;";
+        $groovy = $this->parse($code);
+        $this->assertContains("tmp = x as Object[]", $groovy);
+    }
+    
+    public function testUnsetNulls()
+    {
+        $code = "unset(\$x[0], \$x[1]);";
+        $groovy = $this->parse($code);
+        $this->assertContains("x[0] = null", $groovy);
+        $this->assertContains("x[1] = null", $groovy);
+        $this->assertNotContains("unset", $groovy);
+    }
+    
     /**
      * @param string $code without leading <?php 
      * @return string

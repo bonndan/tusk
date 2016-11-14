@@ -167,17 +167,6 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
      */
     public function pStmt_ClassMethod(\PhpParser\Node\Stmt\ClassMethod $node)
     {
-        if ($node->name == '__call') {
-            $node->name = "methodMissing";
-            $node->params = [];
-            $node->params[0] = new \PhpParser\Node\Param('name');
-            $node->params[0]->type = 'String';
-            $node->params[1] = new \PhpParser\Node\Param('arguments');
-            $node->params[1]->type = 'def';
-        }
-
-
-
         $tags = $this->getNodeDocBlockTags($node);
         foreach ($tags as $tag) {
 
@@ -482,6 +471,23 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         return "throw new GroovyException(" . (null !== $node->expr ? $this->p($node->expr) : "'die'") . ")";
     }
     
+    public function pExpr_Cast_Array(\PhpParser\Node\Expr\Cast\Array_ $node)
+    {
+        return $this->pPostfixOp('Expr_Cast_Array', $node->expr, ' as Object[]');
+    }
+    
+    public function pExpr_Cast_Unset(\PhpParser\Node\Expr\Cast\Unset_ $node) {
+        return "null";
+    }
+    
+    public function pStmt_Unset(\PhpParser\Node\Stmt\Unset_ $node)
+    {
+        $buffer = '';
+        foreach ($node->vars as $expr)
+            $buffer .= $this->p($expr) . ' = null' .PHP_EOL;
+        
+        return $buffer;
+    }
     /**
      * @todo seek equivalent in groovy. import static?
      */

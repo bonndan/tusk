@@ -35,6 +35,7 @@ class Tusk
 
         $traverser = new \PhpParser\NodeTraverser();
         $traverser->addVisitor(new NodeVisitor\Destruct());
+        $traverser->addVisitor(new NodeVisitor\MagicCall());
 
         $stmts = $parser->parse($code);
         $stmts = $traverser->traverse($stmts);
