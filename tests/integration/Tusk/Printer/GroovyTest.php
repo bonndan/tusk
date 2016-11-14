@@ -398,7 +398,7 @@ class A {
     }
 }";
         $groovy = $this->parse($code);
-        $this->assertContains('public void test(bool flag)', $groovy);
+        $this->assertContains('public void test(boolean flag)', $groovy);
     }
     
     public function testCatch()
@@ -582,6 +582,30 @@ class A {
         $this->assertContains("@Field String A = 'b'", $groovy);
         $this->assertContains("import groovy.transform.Field", $groovy);
         $this->assertNotContains("const", $groovy);
+    }
+    
+    public function testBoolToBooleanWithFunction()
+    {
+        $code = "function a (bool \$b) : bool 
+            {
+            return false;
+            }
+            ";
+        $groovy = $this->parse($code);
+        $this->assertContains("boolean a(boolean b)", $groovy);
+        $this->assertNotContains("bool b", $groovy);
+    }
+    
+    public function testLowerCaseStringTypeParam()
+    {
+        $code = "function a (string \$b) : bool 
+            {
+            return false;
+            }
+            ";
+        $groovy = $this->parse($code);
+        $this->assertContains("boolean a(String b)", $groovy);
+        $this->assertNotContains("string", $groovy);
     }
     
     /**

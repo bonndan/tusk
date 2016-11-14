@@ -193,6 +193,16 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
      */
     public function pStmt_ClassMethod(\PhpParser\Node\Stmt\ClassMethod $node)
     {
+        return $this->pStmt_FunctionLike($node);
+    }
+    
+    public function pStmt_Function(\PhpParser\Node\Stmt\Function_ $node)
+    {
+        return $this->pStmt_FunctionLike($node);
+    }
+    
+    private function pStmt_FunctionLike(\PhpParser\Node\FunctionLike $node) 
+    {
         $tags = $this->getNodeDocBlockTags($node);
         foreach ($tags as $tag) {
 
@@ -217,12 +227,16 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
             $buffer = (null !== $node->returnType ? $this->pType($node->returnType) . ' ': 'def ') . $node->name;
         }
         
-        return $this->pModifiers($node->type)
-            . $buffer
+        
+        if ($node instanceof \PhpParser\Node\Stmt\ClassMethod) {
+            $buffer = $this->pModifiers($node->type) . $buffer;
+        }
+        
+        return $buffer
             . '(' . $this->pCommaSeparated($node->params) . ')'
             . (null !== $node->stmts ? "\n" . '{' . $this->pStmts($node->stmts) . "\n" . '}' : ';');
     }
-
+    
     /**
      * Removing "$" and by-ref from params.
      * 
@@ -237,6 +251,19 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
             . ($node->default ? ' = ' . $this->p($node->default) : '');
     }
 
+    protected function pType($node) {
+        if (is_string($node)) {
+            if ($node == 'bool')
+                return 'boolean';
+            if ($node == 'string')
+                return 'String';
+            
+            return $node;
+        } 
+            
+        return $this->p($node);
+    }
+    
     public function pExpr_Variable(\PhpParser\Node\Expr\Variable $node)
     {
         if ($node->name instanceof \PhpParser\Node\Expr) {
