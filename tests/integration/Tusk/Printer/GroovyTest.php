@@ -608,6 +608,77 @@ class A {
         $this->assertNotContains("string", $groovy);
     }
     
+    public function testMultilineString()
+    {
+        $code = "function a() 
+            {
+                \$a = '
+                This
+                is
+                multiline';
+            return \$a;
+            }
+            ";
+        $groovy = $this->parse($code);
+        $this->assertContains('"""', $groovy);
+        $this->assertContains('multiline"""', $groovy);
+        $this->assertNotContains("'", $groovy);
+        $this->assertNotContains(" '\n", $groovy);
+    }
+    
+    public function testMultilineString2()
+    {
+        $code = "function a() 
+            {
+                \$a = \"
+                This
+                is
+                multiline\";
+            return \$a;
+            }
+            ";
+        $groovy = $this->parse($code);
+        $this->assertContains('"""\n', $groovy);
+        $this->assertContains('multiline"""', $groovy);
+        $this->assertNotContains(" '\n", $groovy);
+    }
+    
+    public function testHereDoc()
+    {
+        $code = "function a() 
+            {
+                \$a = <<<EOT
+This is a text
+EOT;
+            return \$a;
+            }
+            ";
+        $groovy = $this->parse($code);
+        $this->assertContains('"""' . "\n", $groovy);
+        $this->assertNotContains("EOT", $groovy);
+        $this->assertNotContains(">", $groovy);
+        $this->assertNotContains(">", $groovy);
+    }
+    
+    public function testNowDoc()
+    {
+        $code = "function a() 
+            {
+                \$a = <<<'EOT'
+This is a text
+EOT;
+            return \$a;
+            }
+            ";
+        $groovy = $this->parse($code);
+        $this->assertContains('"""'. "\n", $groovy);
+        $this->assertNotContains("'EOT'", $groovy);
+        $this->assertNotContains("EOT", $groovy);
+        $this->assertNotContains(">", $groovy);
+        $this->assertNotContains(">", $groovy);
+    }
+    
+    
     /**
      * @param string $code without leading <?php 
      * @return string

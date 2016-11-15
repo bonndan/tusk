@@ -13,14 +13,56 @@ class Tusk
 {
 
     /**
+     * @var Configuration
+     */
+    private $config;
+
+    public function __construct(Configuration $config = null)
+    {
+        if ($config) {
+            $this->config = $config;
+        } else {
+            $this->config = new Configuration();
+        }
+    }
+
+    /**
      * Converts a php source file into groovy.
      * 
-     * @param string $file
+     * @param string $path
      */
-    public function run(string $file)
+    public function run(string $path)
     {
-        $code = file_get_contents($file);
-        echo $this->toGroovy($this->getStatements($code));
+        if (is_file($path)) {
+            $this->runFile(new \Symfony\Component\Finder\SplFileInfo($path, null, null));
+        } else {
+            $this->runDirectory($path);
+        }
+    }
+
+    private function runFile(\Symfony\Component\Finder\SplFileInfo $file)
+    {
+        $code = $file->getContents();
+        $groovySrc = $this->toGroovy($this->getStatements($code));
+        if ($this->config->isConfigured()) {
+            
+        } else {
+            echo $groovySrc;
+        }
+    }
+
+    private function runDirectory(string $path)
+    {
+        $onlyPHP = function (\SplFileInfo $file) {
+            return strpos((string) $file, ".php");
+        };
+
+        $finder = new \Symfony\Component\Finder\Finder();
+        $finder->files()->in($path)->filter($onlyPHP);
+
+        foreach ($finder as $file) {
+            $this->runFile($file);
+        }
     }
 
     public function toGroovy(array $statements)

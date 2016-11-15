@@ -3,9 +3,9 @@
 namespace Tusk\Printer;
 
 /**
- * Description of Groovy
- *
+ * Stateful pretty printer for Groovy output.
  * 
+ *
  */
 class Groovy extends \PhpParser\PrettyPrinter\Standard
 {
@@ -14,11 +14,17 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
      * @var \phpDocumentor\Reflection\DocBlockFactory
      */
     private $docblockFactory;
-    
+    private $package;
+
     public function __construct(array $options = array())
     {
         parent::__construct($options);
         $this->docblockFactory = \phpDocumentor\Reflection\DocBlockFactory::createInstance();
+    }
+    
+    public function prettyPrint(array $stmts) 
+    {
+        return new \Tusk\File(parent::prettyPrint($stmts), $this->package);
     }
 
     public function pStmt_ClassConst(\PhpParser\Node\Stmt\ClassConst $node)
@@ -160,7 +166,8 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     public function pStmt_Namespace(\PhpParser\Node\Stmt\Namespace_ $node)
     {
         if ($this->canUseSemicolonNamespaces) {
-            return 'package ' . $this->asPackage($this->p($node->name)) . "\n" . $this->pStmts($node->stmts, false);
+            $this->package =  $this->asPackage($this->p($node->name));
+            return 'package ' . $this->package . "\n" . $this->pStmts($node->stmts, false);
         } else {
             return 'package ' . (null !== $node->name ? ' ' . $this->p($node->name) : '')
                 . ' {' . $this->pStmts($node->stmts) . "\n" . '}';
@@ -536,11 +543,42 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     public function pStmt_Unset(\PhpParser\Node\Stmt\Unset_ $node)
     {
         $buffer = '';
-        foreach ($node->vars as $expr)
-            $buffer .= $this->p($expr) . ' = null' .PHP_EOL;
-        
+        foreach ($node->vars as $expr) {
+            $buffer .= $this->p($expr) . ' = null' . PHP_EOL;
+        }
+
         return $buffer;
     }
+    
+    public function pScalar_String(\PhpParser\Node\Scalar\String_ $node)
+    {
+        $isMultiline = $node->getAttribute("startLine") < $node->getAttribute('endLine');
+        $kind = $node->getAttribute('kind', \PhpParser\Node\Scalar\String_::KIND_SINGLE_QUOTED);
+        switch ($kind) {
+            case \PhpParser\Node\Scalar\String_::KIND_NOWDOC:
+            case \PhpParser\Node\Scalar\String_::KIND_HEREDOC:
+                $label = $node->getAttribute('docLabel');
+                if ($label && !$this->containsEndLabel($node->value, $label)) {
+                    if ($node->value === '') {
+                        return $this->pNoIndent("''");
+                    }
+
+                    return $this->pNoIndent('"""' . PHP_EOL . $node->value . PHP_EOL . '"""');
+                }
+                /* break missing intentionally */
+            case \PhpParser\Node\Scalar\String_::KIND_SINGLE_QUOTED:
+                return $isMultiline ?
+                    '"""' . $this->pNoIndent(addcslashes($node->value, '\'\\')) . '"""':
+                    '\'' . $this->pNoIndent(addcslashes($node->value, '\'\\')) . '\'';
+            
+            case \PhpParser\Node\Scalar\String_::KIND_DOUBLE_QUOTED:
+                return $isMultiline ?
+                '"""' . $this->escapeString($node->value, '"') . '"""':
+                '"' . $this->escapeString($node->value, '"') . '"';
+        }
+        throw new \Exception('Invalid string kind');
+    }
+    
     /**
      * @todo seek equivalent in groovy. import static?
      */
