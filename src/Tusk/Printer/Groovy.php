@@ -579,6 +579,18 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         throw new \Exception('Invalid string kind');
     }
     
+    public function pExpr_Closure(\PhpParser\Node\Expr\Closure $node)
+    {
+        if ($node->static)
+            return $this->getException("Static closure is not supported.");
+        if (!empty($node->uses) )
+            return $this->getException("Closure use() is not supported.");
+        
+        return '{ ' . $this->pCommaSeparated($node->params) . ' ->' . PHP_EOL
+             . $this->pStmts($node->stmts) . "\n" . '}';
+    }
+    
+    
     /**
      * @todo seek equivalent in groovy. import static?
      */

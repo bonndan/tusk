@@ -678,6 +678,20 @@ EOT;
         $this->assertNotContains(">", $groovy);
     }
     
+    public function testClosure()
+    {
+        $code = "\$a = function(string \$b, int \$c) 
+            {
+            return \$b;
+            };
+            ";
+        $groovy = $this->parse($code);
+        $this->assertContains('{ String b, int c ->', $groovy);
+        $this->assertNotContains("function", $groovy);
+        $this->assertNotContains("(", $groovy);
+        $this->assertNotContains(")", $groovy);
+    }
+    
     
     /**
      * @param string $code without leading <?php 
