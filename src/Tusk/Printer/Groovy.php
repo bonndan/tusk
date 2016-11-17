@@ -241,7 +241,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         
         return $buffer
             . '(' . $this->pCommaSeparated($node->params) . ')'
-            . (null !== $node->stmts ? "\n" . '{' . $this->pStmts($node->stmts) . "\n" . '}' : ';');
+            . (null !== $node->stmts ? "\n" . '{' . $this->pStmts($node->stmts) . "\n" . '}' . PHP_EOL: PHP_EOL);
     }
     
     /**
@@ -258,12 +258,15 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
             . ($node->default ? ' = ' . $this->p($node->default) : '');
     }
 
-    protected function pType($node) {
+    protected function pType($node) 
+    {
         if (is_string($node)) {
             if ($node == 'bool')
                 return 'boolean';
             if ($node == 'string')
                 return 'String';
+            if ($node == 'type') //bad doc comment
+                return 'def';
             
             return $node;
         } 
@@ -445,7 +448,8 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
 
     public function pExpr_MethodCall(\PhpParser\Node\Expr\MethodCall $node)
     {
-        return $this->pDereferenceLhs($node->var) . '.' . $this->pObjectProperty($node->name)
+        $buffer = ($node->var->name == 'this') ? '' : $this->pDereferenceLhs($node->var) . '.';
+        return $buffer . $this->pObjectProperty($node->name)
             . '(' . $this->pCommaSeparated($node->args) . ')';
     }
     
@@ -590,6 +594,50 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
              . $this->pStmts($node->stmts) . "\n" . '}';
     }
     
+    public function pStmt_Return(\PhpParser\Node\Stmt\Return_ $node)
+    {
+        return 'return' . (null !== $node->expr ? ' ' . $this->p($node->expr) : '');
+    }
+    
+    public function pScalar_MagicConst_Class(\PhpParser\Node\Scalar\MagicConst\Class_ $node)
+    {
+        return "/* TODO __CLASS__ was used */ this.getClass().getName()";
+    }
+    
+    public function pScalar_MagicConst_Dir(\PhpParser\Node\Scalar\MagicConst\Dir $node)
+    {
+        return "/* TODO __DIR__ was used */ getClass().getProtectionDomain().getCodeSource().getLocation().getPath()";
+    }
+    
+    public function pScalar_MagicConst_Line(\PhpParser\Node\Scalar\MagicConst\Line $node)
+    {
+        return "/* TODO __LINE__ was used */ 1";
+    }
+
+    public function pScalar_MagicConst_Method(\PhpParser\Node\Scalar\MagicConst\Method $node)
+    {
+        return "/* TODO __METHOD__ was used */ 'METHOD'";
+    }
+    
+    public function pScalar_MagicConst_Function(\PhpParser\Node\Scalar\MagicConst\Function_ $node)
+    {
+        return "/* TODO __FUNCTION__ was used */ 'FUNCTION'";
+    }
+    
+    public function pScalar_MagicConst_File(\PhpParser\Node\Scalar\MagicConst\File $node)
+    {
+        return "/* TODO __FILE__ was used */ getClass().getProtectionDomain().getCodeSource().getLocation().getPath()";
+    }
+
+    public function pExpr_Empty(\PhpParser\Node\Expr\Empty_ $node)
+    {
+        return $this->p($node->expr);
+    }
+    
+    public function pExpr_Eval(\PhpParser\Node\Expr\Eval_ $node)
+    {
+        return '/* TODO better find a different solution than eval */ evaluate(' . $this->p($node->expr) . ')';
+    }
     
     /**
      * @todo seek equivalent in groovy. import static?

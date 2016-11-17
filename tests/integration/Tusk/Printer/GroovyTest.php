@@ -332,7 +332,7 @@ class A {
     }
 }";
         $groovy = $this->parse($code);
-        $this->assertContains('this."$method"()', $groovy);
+        $this->assertContains('"$method"()', $groovy);
         $this->assertNotContains('$this->$method()', $groovy);
     }
     
@@ -692,6 +692,72 @@ EOT;
         $this->assertNotContains(")", $groovy);
     }
     
+    public function testOwnMethodCallWithoutThis()
+    {
+        $code = "
+class A extends B {
+    
+    public function a() {
+        return \$this->b();
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains("return b()", $groovy);
+        $this->assertNotContains("this.b()", $groovy);
+    }
+    
+    public function testReturnNoSemicolon()
+    {
+        $code = "
+class A {
+    
+    public function a() {
+        return 'a';
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains("return 'a'" . PHP_EOL, $groovy);
+        $this->assertNotContains("return 'a';", $groovy);
+    }
+    
+    public function testEmptyIsOmitted()
+    {
+        $code = "
+class A {
+    
+    public function a(\$b) {
+        if (empty(\$b))
+            return 'n';
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains("if (b)", $groovy);
+        $this->assertNotContains("empty(", $groovy);
+    }
+    
+    public function testEval()
+    {
+        $code = "eval('\$a =1+2;');";
+        $groovy = $this->parse($code);
+        $this->assertContains("evaluate(", $groovy);
+        $this->assertContains("TODO", $groovy);
+        $this->assertNotContains("eval(", $groovy);
+    }
+    
+    public function testMagicClassConst()
+    {
+        
+            $code = "
+class A {
+    
+    public function a() {
+        return __CLASS__;
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains("this.getClass().getName()", $groovy);
+        $this->assertNotContains("__CLASS__;", $groovy);
+    }
     
     /**
      * @param string $code without leading <?php 
