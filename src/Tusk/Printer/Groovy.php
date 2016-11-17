@@ -267,9 +267,11 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
                 return 'String';
             if ($node == 'type') //bad doc comment
                 return 'def';
+            if ($node == 'array') /* @todo losing info here */
+                return $this->getTodo('List|Map') . ' def';
             
             return $node;
-        } 
+        }
             
         return $this->p($node);
     }
@@ -403,7 +405,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
 
             return;
         }
-        if (property_exists($parent, "stmts"))
+        if (property_exists($parent, "stmts") && $parent->stmts)
             foreach ($parent->stmts as $key => $node) {
                 $this->replaceTraits($node);
             }
@@ -601,32 +603,32 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     
     public function pScalar_MagicConst_Class(\PhpParser\Node\Scalar\MagicConst\Class_ $node)
     {
-        return "/* TODO __CLASS__ was used */ this.getClass().getName()";
+        return $this->getTodo('__CLASS__ was used') . " this.getClass().getName()";
     }
     
     public function pScalar_MagicConst_Dir(\PhpParser\Node\Scalar\MagicConst\Dir $node)
     {
-        return "/* TODO __DIR__ was used */ getClass().getProtectionDomain().getCodeSource().getLocation().getPath()";
+        return $this->getTodo('__DIR__ was used') . " getClass().getProtectionDomain().getCodeSource().getLocation().getPath()";
     }
     
     public function pScalar_MagicConst_Line(\PhpParser\Node\Scalar\MagicConst\Line $node)
     {
-        return "/* TODO __LINE__ was used */ 1";
+        return $this->getTodo('__LINE__ was used') . " 1";
     }
 
     public function pScalar_MagicConst_Method(\PhpParser\Node\Scalar\MagicConst\Method $node)
     {
-        return "/* TODO __METHOD__ was used */ 'METHOD'";
+        return $this->getTodo('__METHOD__ was used') . " 'METHOD'";
     }
     
     public function pScalar_MagicConst_Function(\PhpParser\Node\Scalar\MagicConst\Function_ $node)
     {
-        return "/* TODO __FUNCTION__ was used */ 'FUNCTION'";
+        return $this->getTodo('__FUNCTION__ was used') . " 'FUNCTION'";
     }
     
     public function pScalar_MagicConst_File(\PhpParser\Node\Scalar\MagicConst\File $node)
     {
-        return "/* TODO __FILE__ was used */ getClass().getProtectionDomain().getCodeSource().getLocation().getPath()";
+        return $this->getTodo('__FILE__ was used') . " getClass().getProtectionDomain().getCodeSource().getLocation().getPath()";
     }
 
     public function pExpr_Empty(\PhpParser\Node\Expr\Empty_ $node)
@@ -636,7 +638,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     
     public function pExpr_Eval(\PhpParser\Node\Expr\Eval_ $node)
     {
-        return '/* TODO better find a different solution than eval */ evaluate(' . $this->p($node->expr) . ')';
+        return $this->getTodo('better find a different solution than eval') . ' evaluate(' . $this->p($node->expr) . ')';
     }
     
     /**
@@ -659,5 +661,10 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     private function getException(string $unsupported)
     {
         return "throw new GroovyException('$unsupported')";
+    }
+    
+    private function getTodo(string $todo) 
+    {
+        return '/* TODO ' . $todo . ' */';
     }
 }

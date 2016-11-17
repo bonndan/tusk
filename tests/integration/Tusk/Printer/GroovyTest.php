@@ -759,6 +759,18 @@ class A {
         $this->assertNotContains("__CLASS__;", $groovy);
     }
     
+    public function testArrayTypeHint()
+    {
+        
+            $code = "
+interface A {
+    public function a(array \$data);
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains("def data)", $groovy);
+        $this->assertNotContains("array", $groovy);
+    }
+    
     /**
      * @param string $code without leading <?php 
      * @return string
