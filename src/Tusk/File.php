@@ -11,11 +11,13 @@ class File
 {
     private $src;
     private $package;
+    private $filename;
 
-    public function __construct(string $src, string $package = null)
+    public function __construct(string $src, string $package = null, string $filename = null)
     {
         $this->src = $src;
         $this->package = $package;
+        $this->filename = $filename;
     }
     
     public function __toString()

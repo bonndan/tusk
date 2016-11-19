@@ -14,17 +14,17 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
      * @var \phpDocumentor\Reflection\DocBlockFactory
      */
     private $docblockFactory;
-    private $package;
+    private $package = '';
 
     public function __construct(array $options = array())
     {
         parent::__construct($options);
         $this->docblockFactory = \phpDocumentor\Reflection\DocBlockFactory::createInstance();
     }
-    
-    public function prettyPrint(array $stmts) 
+
+    public function getPackage(): string
     {
-        return new \Tusk\File(parent::prettyPrint($stmts), $this->package);
+        return $this->package;
     }
 
     public function pStmt_ClassConst(\PhpParser\Node\Stmt\ClassConst $node)
@@ -47,7 +47,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         //anything else
         return $buffer . $this->pCommaSeparated($node->consts) . ';';
     }
-    
+
     /**
      * @todo prevent multiple same imports
      */
@@ -66,9 +66,9 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
                 $buffer .= "String ";
                 $buffer .= $this->p($node->consts[0]);
             }
-            
+
             return $buffer;
-        } 
+        }
 
         //anything else
         return $buffer . $this->pCommaSeparated($node->consts) . ';';
@@ -105,7 +105,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
 
             $tags = $this->getNodeDocBlockTags($node);
             if (isset($tags[0])) {
-                return $buffer . $this->getType($tags[0]) .' ' . $this->p($node->props[0]) . PHP_EOL;
+                return $buffer . $this->getType($tags[0]) . ' ' . $this->p($node->props[0]) . PHP_EOL;
             }
         }
 
@@ -125,12 +125,10 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         /**
          * @todo support key-value type annotation which is supported by phpdocumentor
          */
-        if ($typeObject instanceof \phpDocumentor\Reflection\DocBlock\Tags\Var_
-            || $typeObject instanceof \phpDocumentor\Reflection\DocBlock\Tags\Param
-            || $typeObject instanceof \phpDocumentor\Reflection\DocBlock\Tags\Return_
+        if ($typeObject instanceof \phpDocumentor\Reflection\DocBlock\Tags\Var_ || $typeObject instanceof \phpDocumentor\Reflection\DocBlock\Tags\Param || $typeObject instanceof \phpDocumentor\Reflection\DocBlock\Tags\Return_
         ) {
 
-            $raw = (string) $typeObject->getType(); 
+            $raw = (string) $typeObject->getType();
             $buffer = (strpos($raw, '[]') !== false) ? "[]" : '';
             switch (str_replace('[]', '', $raw)) {
                 case "string": return "String" . $buffer;
@@ -166,7 +164,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     public function pStmt_Namespace(\PhpParser\Node\Stmt\Namespace_ $node)
     {
         if ($this->canUseSemicolonNamespaces) {
-            $this->package =  $this->asPackage($this->p($node->name));
+            $this->package = $this->asPackage($this->p($node->name));
             return 'package ' . $this->package . "\n" . $this->pStmts($node->stmts, false);
         } else {
             return 'package ' . (null !== $node->name ? ' ' . $this->p($node->name) : '')
@@ -202,27 +200,29 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     {
         return $this->pStmt_FunctionLike($node);
     }
-    
+
     public function pStmt_Function(\PhpParser\Node\Stmt\Function_ $node)
     {
         return $this->pStmt_FunctionLike($node);
     }
-    
-    private function pStmt_FunctionLike(\PhpParser\Node\FunctionLike $node) 
+
+    private function pStmt_FunctionLike(\PhpParser\Node\FunctionLike $node)
     {
         $tags = $this->getNodeDocBlockTags($node);
         foreach ($tags as $tag) {
 
             if ($tag instanceof \phpDocumentor\Reflection\DocBlock\Tags\Param) {
                 foreach ($node->params as $param) {
+                    /* @var $param \PhpParser\Node\Param */
                     if ($param->name == $tag->getVariableName()) {
-                        $param->type = $this->getType($tag);
+                        if (!$param->type)
+                            $param->type = $this->getType($tag);
                     }
                 }
             }
 
             if ($tag instanceof \phpDocumentor\Reflection\DocBlock\Tags\Return_) {
-                $type = $this->getType($tag);             
+                $type = $this->getType($tag);
                 if ($type)
                     $node->returnType = $type;
             }
@@ -231,19 +231,19 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         if (isset($node->isConstructor) && $node->isConstructor) {
             $buffer = $node->name;
         } else {
-            $buffer = (null !== $node->returnType ? $this->pType($node->returnType) . ' ': 'def ') . $node->name;
+            $buffer = (null !== $node->returnType ? $this->pType($node->returnType) . ' ' : 'def ') . $node->name;
         }
-        
-        
+
+
         if ($node instanceof \PhpParser\Node\Stmt\ClassMethod) {
             $buffer = $this->pModifiers($node->type) . $buffer;
         }
-        
+
         return $buffer
             . '(' . $this->pCommaSeparated($node->params) . ')'
-            . (null !== $node->stmts ? "\n" . '{' . $this->pStmts($node->stmts) . "\n" . '}' . PHP_EOL: PHP_EOL);
+            . (null !== $node->stmts ? "\n" . '{' . $this->pStmts($node->stmts) . "\n" . '}' . PHP_EOL : PHP_EOL);
     }
-    
+
     /**
      * Removing "$" and by-ref from params.
      * 
@@ -258,7 +258,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
             . ($node->default ? ' = ' . $this->p($node->default) : '');
     }
 
-    protected function pType($node) 
+    protected function pType($node)
     {
         if (is_string($node)) {
             if ($node == 'bool')
@@ -268,14 +268,14 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
             if ($node == 'type') //bad doc comment
                 return 'def';
             if ($node == 'array') /* @todo losing info here */
-                return $this->getTodo('List|Map') . ' def';
-            
+                return $this->getTodo('Collection|Map') . ' def';
+
             return $node;
         }
-            
+
         return $this->p($node);
     }
-    
+
     public function pExpr_Variable(\PhpParser\Node\Expr\Variable $node)
     {
         if ($node->name instanceof \PhpParser\Node\Expr) {
@@ -424,7 +424,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     {
         return $this->asPackage(parent::pName($node));
     }
-    
+
     public function pName_FullyQualified(\PhpParser\Node\Name\FullyQualified $node): string
     {
         return $this->asPackage(parent::pName_FullyQualified($node));
@@ -454,32 +454,33 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         return $buffer . $this->pObjectProperty($node->name)
             . '(' . $this->pCommaSeparated($node->args) . ')';
     }
-    
+
     public function pStmt_Catch(\PhpParser\Node\Stmt\Catch_ $node)
     {
         return ' catch (' . $this->p($node->type) . ' ' . $node->var . ') {'
-             . $this->pStmts($node->stmts) . "\n" . '}';
+            . $this->pStmts($node->stmts) . "\n" . '}';
     }
-    
+
     public function pStmt_Use(\PhpParser\Node\Stmt\Use_ $node)
     {
         return 'import ' . $this->pUseType($node->type)
-             . $this->asPackage($this->pCommaSeparated($node->uses));
+            . $this->asPackage($this->pCommaSeparated($node->uses));
     }
-    
+
     /**
      * @todo println is not echo!
      */
     public function pStmt_Echo(\PhpParser\Node\Stmt\Echo_ $node)
     {
-        return 'println ' . $this->pImplode($node->exprs, ' + ');;
+        return 'println ' . $this->pImplode($node->exprs, ' + ');
+        ;
     }
-    
+
     public function pExpr_ClassConstFetch(\PhpParser\Node\Expr\ClassConstFetch $node)
     {
-         return $this->p($node->class) . '.' . $node->name;
+        return $this->p($node->class) . '.' . $node->name;
     }
-    
+
     /**
      * @todo use "is" if object comparison is wanted
      */
@@ -487,17 +488,17 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     {
         return $this->pInfixOp('Expr_BinaryOp_Identical', $node->left, ' == ', $node->right);
     }
-    
+
     public function pExpr_BinaryOp_NotIdentical(\PhpParser\Node\Expr\BinaryOp\NotIdentical $node)
     {
         return $this->pInfixOp('Expr_BinaryOp_NotIdentical', $node->left, ' != ', $node->right);
     }
-    
+
     public function pExpr_BinaryOp_Coalesce(\PhpParser\Node\Expr\BinaryOp\Coalesce $node)
     {
-        return $this->pInfixOp('Expr_BinaryOp_Coalesce', $node->left, ' ?: ', $node->right); 
+        return $this->pInfixOp('Expr_BinaryOp_Coalesce', $node->left, ' ?: ', $node->right);
     }
-    
+
     public function pExpr_BinaryOp_LogicalAnd(\PhpParser\Node\Expr\BinaryOp\LogicalAnd $node)
     {
         return $this->pInfixOp('Expr_BinaryOp_LogicalAnd', $node->left, ' && ', $node->right);
@@ -507,7 +508,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     {
         return $this->pInfixOp('Expr_BinaryOp_LogicalOr', $node->left, ' || ', $node->right);
     }
-    
+
     public function pExpr_BinaryOp_LogicalXor(\PhpParser\Node\Expr\BinaryOp\LogicalXor $node)
     {
         return $this->pInfixOp('Expr_BinaryOp_LogicalXor', $node->left, ' ^ ', $node->right);
@@ -517,35 +518,56 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     {
         return '[' . $this->pCommaSeparated($node->items) . ']';
     }
-    
+
     public function pExpr_ArrayItem(\PhpParser\Node\Expr\ArrayItem $node)
     {
-        return (null !== $node->key ? $node->key->value . ': ' : '') . $this->p($node->value);
+
+        $key = null;
+        if (null !== $node->key) {
+            if ($node->key instanceof \PhpParser\Node\Expr\ClassConstFetch) {
+                $class = $node->key->class == 'self' ? '' : $node->key->class . '.';
+                $key = '(' . $class . $node->key->name . ')';
+            } elseif ($node->key instanceof \PhpParser\Node\Expr\Variable) {
+                $key = '(' .$node->key->name . ')';
+            } elseif ($node->key instanceof \PhpParser\Node\Scalar\String_) {
+                $key = $node->key->value;
+            } elseif ($node->key instanceof \PhpParser\Node\Expr\FuncCall 
+                || $node->key instanceof \PhpParser\Node\Expr\MethodCall
+            ) {
+                $key = '(' .$this->p($node->key) . ')';
+            } else {
+                $key = $this->p($node->key);
+            }
+        }
+
+        $key = (null !== $key ? $key . ': ' : '');
+        return $key . $this->p($node->value);
     }
-    
+
     public function pExpr_Yield(\PhpParser\Node\Expr\Yield_ $node)
     {
         return $this->getException(parent::pExpr_Yield($node) . ' is not supported');
     }
-    
+
     public function pExpr_Exit(\PhpParser\Node\Expr\Exit_ $node)
     {
         $kind = $node->getAttribute('kind', \PhpParser\Node\Expr\Exit_::KIND_DIE);
         if ($kind === \PhpParser\Node\Expr\Exit_::KIND_EXIT)
             return "System.exit(" . (null !== $node->expr ? $this->p($node->expr) : '') . ")";
-            
+
         return "throw new GroovyException(" . (null !== $node->expr ? $this->p($node->expr) : "'die'") . ")";
     }
-    
+
     public function pExpr_Cast_Array(\PhpParser\Node\Expr\Cast\Array_ $node)
     {
         return $this->pPostfixOp('Expr_Cast_Array', $node->expr, ' as Object[]');
     }
-    
-    public function pExpr_Cast_Unset(\PhpParser\Node\Expr\Cast\Unset_ $node) {
+
+    public function pExpr_Cast_Unset(\PhpParser\Node\Expr\Cast\Unset_ $node)
+    {
         return "null";
     }
-    
+
     public function pStmt_Unset(\PhpParser\Node\Stmt\Unset_ $node)
     {
         $buffer = '';
@@ -555,7 +577,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
 
         return $buffer;
     }
-    
+
     public function pScalar_String(\PhpParser\Node\Scalar\String_ $node)
     {
         $isMultiline = $node->getAttribute("startLine") < $node->getAttribute('endLine');
@@ -571,46 +593,46 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
 
                     return $this->pNoIndent('"""' . PHP_EOL . $node->value . PHP_EOL . '"""');
                 }
-                /* break missing intentionally */
+            /* break missing intentionally */
             case \PhpParser\Node\Scalar\String_::KIND_SINGLE_QUOTED:
                 return $isMultiline ?
-                    '"""' . $this->pNoIndent(addcslashes($node->value, '\'\\')) . '"""':
+                    '"""' . $this->pNoIndent(addcslashes($node->value, '\'\\')) . '"""' :
                     '\'' . $this->pNoIndent(addcslashes($node->value, '\'\\')) . '\'';
-            
+
             case \PhpParser\Node\Scalar\String_::KIND_DOUBLE_QUOTED:
                 return $isMultiline ?
-                '"""' . $this->escapeString($node->value, '"') . '"""':
-                '"' . $this->escapeString($node->value, '"') . '"';
+                    '"""' . $this->escapeString($node->value, '"') . '"""' :
+                    '"' . $this->escapeString($node->value, '"') . '"';
         }
         throw new \Exception('Invalid string kind');
     }
-    
+
     public function pExpr_Closure(\PhpParser\Node\Expr\Closure $node)
     {
         if ($node->static)
             return $this->getException("Static closure is not supported.");
-        if (!empty($node->uses) )
+        if (!empty($node->uses))
             return $this->getException("Closure use() is not supported.");
-        
+
         return '{ ' . $this->pCommaSeparated($node->params) . ' ->' . PHP_EOL
-             . $this->pStmts($node->stmts) . "\n" . '}';
+            . $this->pStmts($node->stmts) . "\n" . '}';
     }
-    
+
     public function pStmt_Return(\PhpParser\Node\Stmt\Return_ $node)
     {
         return 'return' . (null !== $node->expr ? ' ' . $this->p($node->expr) : '');
     }
-    
+
     public function pScalar_MagicConst_Class(\PhpParser\Node\Scalar\MagicConst\Class_ $node)
     {
         return $this->getTodo('__CLASS__ was used') . " this.getClass().getName()";
     }
-    
+
     public function pScalar_MagicConst_Dir(\PhpParser\Node\Scalar\MagicConst\Dir $node)
     {
         return $this->getTodo('__DIR__ was used') . " getClass().getProtectionDomain().getCodeSource().getLocation().getPath()";
     }
-    
+
     public function pScalar_MagicConst_Line(\PhpParser\Node\Scalar\MagicConst\Line $node)
     {
         return $this->getTodo('__LINE__ was used') . " 1";
@@ -620,12 +642,12 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     {
         return $this->getTodo('__METHOD__ was used') . " 'METHOD'";
     }
-    
+
     public function pScalar_MagicConst_Function(\PhpParser\Node\Scalar\MagicConst\Function_ $node)
     {
         return $this->getTodo('__FUNCTION__ was used') . " 'FUNCTION'";
     }
-    
+
     public function pScalar_MagicConst_File(\PhpParser\Node\Scalar\MagicConst\File $node)
     {
         return $this->getTodo('__FILE__ was used') . " getClass().getProtectionDomain().getCodeSource().getLocation().getPath()";
@@ -635,18 +657,34 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     {
         return $this->p($node->expr);
     }
-    
+
     public function pExpr_Eval(\PhpParser\Node\Expr\Eval_ $node)
     {
         return $this->getTodo('better find a different solution than eval') . ' evaluate(' . $this->p($node->expr) . ')';
     }
-    
+
+    public function pStmt_Goto(\PhpParser\Node\Stmt\Goto_ $node)
+    {
+        return $this->getException("goto is not supported.");
+    }
+
+    public function pStmt_Global(\PhpParser\Node\Stmt\Global_ $node)
+    {
+        return $this->getException("global is not supported, maybe try public static class members.");
+    }
+
+    public function pStmt_ElseIf(\PhpParser\Node\Stmt\ElseIf_ $node)
+    {
+        return ' else if (' . $this->p($node->cond) . ') {'
+            . $this->pStmts($node->stmts) . "\n" . '}';
+    }
+
     /**
      * @todo seek equivalent in groovy. import static?
      */
-    private function pUseType($type) {
-        return $type === \PhpParser\Node\Stmt\Use_::TYPE_FUNCTION ? 'function '
-            : ($type === \PhpParser\Node\Stmt\Use_::TYPE_CONSTANT ? 'const ' : '');
+    private function pUseType($type)
+    {
+        return $type === \PhpParser\Node\Stmt\Use_::TYPE_FUNCTION ? 'function ' : ($type === \PhpParser\Node\Stmt\Use_::TYPE_CONSTANT ? 'const ' : '');
     }
 
     protected function pObjectProperty($node)
@@ -662,9 +700,15 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     {
         return "throw new GroovyException('$unsupported')";
     }
-    
-    private function getTodo(string $todo) 
+
+    private function getTodo(string $todo)
     {
         return '/* TODO ' . $todo . ' */';
     }
+
+    private function throwError(\PhpParser\Node $node)
+    {
+        throw new \PhpParser\Error("ArrayItem conversion error on " . serialize($node) . "in " . $this->options['filename'], $node->getAttributes());
+    }
+
 }

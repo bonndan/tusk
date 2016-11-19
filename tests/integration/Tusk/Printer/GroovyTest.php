@@ -401,6 +401,38 @@ class A {
         $this->assertContains('public void test(boolean flag)', $groovy);
     }
     
+    public function testScalarTypeHintOverridesParam()
+    {
+        $code = "
+class A {
+    
+    /**
+     * @param bool \$flag
+     * @return void
+     */
+    public function test(string \$flag) {
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains('test(String flag)', $groovy);
+    }
+    
+    public function testTypeHintOverridesParam()
+    {
+        $code = "
+class A {
+    
+    /**
+     * @param bool \$flag
+     * @return void
+     */
+    public function test(string \$flag) {
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains('test(String flag)', $groovy);
+    }
+    
     public function testCatch()
     {
         $code = "
@@ -769,6 +801,110 @@ interface A {
         $groovy = $this->parse($code);
         $this->assertContains("def data)", $groovy);
         $this->assertNotContains("array", $groovy);
+    }
+    
+    public function testGotoUnsupported()
+    {
+        $code = "goto start;";
+        $groovy = $this->parse($code);
+        $this->assertContains("GroovyException", $groovy);
+    }
+    
+    public function testGlobalUnsupported()
+    {
+        $code = "global \$a;";
+        $groovy = $this->parse($code);
+        $this->assertContains("GroovyException", $groovy);
+    }
+    
+    public function testElseif()
+    {
+        $code = "if (\$a) {
+            echo 1;
+        } elseif (\$b) {
+            echo 2;
+        } else {
+            echo 3;
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains('else if', $groovy);
+        $this->assertNotContains('elseif', $groovy);
+    }
+    
+    public function testArrayClassConstKey()
+    {
+        $code = "
+class A 
+{
+    const B = 'b';
+    
+    function foo()
+    {
+        return [A::B => 'foo'];
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains('(A.B)', $groovy);
+        $this->assertNotContains('A::B', $groovy);
+    }
+    
+    public function testArrayOwnClassConstKey()
+    {
+        $code = "
+class A 
+{
+    const B = 'b';
+    
+    function foo()
+    {
+        return [self::B => 'foo'];
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains('[(B):', $groovy);
+        $this->assertNotContains('self::B', $groovy);
+    }
+    
+    public function testArrayFuncCallKey()
+    {
+        $code = "
+class A extends B
+{
+    const B = 'b';
+    
+    function foo()
+    {
+        return [strtolower('b') => 'foo'];
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains("[(strtolower('b')):", $groovy);
+    }
+    
+    public function testArrayMethodCallKey()
+    {
+        $code = "
+class A extends B
+{
+    const B = 'b';
+    
+    function foo()
+    {
+        return [\$this->bar() => 'foo'];
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains('[(bar()):', $groovy);
+    }
+    
+    public function testArrayConcatKey()
+    {
+        $code = "
+\$a = '1';
+\$b = ['key' . \$a => 'foo'];
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("'key' + a", $groovy);
     }
     
     /**

@@ -15,3 +15,8 @@ the nodes in Groovy syntax.
 * PHP built-in functions need to be rewritten in Java or Groovy or replaced with equivalents.
 * garbage like "goto"
 * fancy stuff like yield, destructors, magic methods and constants
+
+
+Parser errors:
+
+arrays with class const keys, concatenated keys
