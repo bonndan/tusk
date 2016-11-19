@@ -707,6 +707,36 @@ class A {
         $this->assertNotContains(" '\n", $groovy);
     }
     
+    public function testMultilineStringEndsOnDoubleQuote()
+    {
+        $code = "function a() 
+            {
+                \$a ='
+                This
+                is
+                \"multiline\"';
+            return \$a;
+            }
+            ";
+        $groovy = $this->parse($code);
+        $this->assertContains('multiline" """', $groovy);
+    }
+    
+    public function testMultilineStringEndsOnDoubleQuote2()
+    {
+        $code = "function a() 
+            {
+                \$a = \"
+                This
+                is
+                \\\"multiline\\\"\";
+            return \$a;
+            }
+            ";
+        $groovy = $this->parse($code);
+        $this->assertNotContains('""""', $groovy);
+    }
+    
     public function testHereDoc()
     {
         $code = "function a() 

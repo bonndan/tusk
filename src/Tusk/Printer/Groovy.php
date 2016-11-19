@@ -614,14 +614,16 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
                 }
             /* break missing intentionally */
             case \PhpParser\Node\Scalar\String_::KIND_SINGLE_QUOTED:
-                return $isMultiline ?
-                    '"""' . $this->pNoIndent(addcslashes($node->value, '\'\\')) . '"""' :
-                    '\'' . $this->pNoIndent(addcslashes($node->value, '\'\\')) . '\'';
+                $escaped = $this->pNoIndent(addcslashes($node->value, '\'\\'));
+                if (substr($escaped, -1) == '"')
+                    $escaped .= ' '; //adding a whitespace if last char is "
+                return $isMultiline ? '"""' . $escaped . '"""' : '\'' . $escaped. '\'';
 
             case \PhpParser\Node\Scalar\String_::KIND_DOUBLE_QUOTED:
-                return $isMultiline ?
-                    '"""' . $this->escapeString($node->value, '"') . '"""' :
-                    '"' . $this->escapeString($node->value, '"') . '"';
+                $escaped = $this->escapeString($node->value, '"');
+                if (substr($escaped, -1) == '"')
+                    $escaped .= ' '; //adding a whitespace if last char is "
+                return $isMultiline ? '"""' . $escaped . '"""' : '"' . $escaped . '"';
         }
         throw new \Exception('Invalid string kind');
     }
@@ -698,12 +700,9 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
             . $this->pStmts($node->stmts) . "\n" . '}';
     }
 
-    /**
-     * @todo seek equivalent in groovy. import static?
-     */
     private function pUseType($type)
     {
-        return $type === \PhpParser\Node\Stmt\Use_::TYPE_FUNCTION ? 'function ' : ($type === \PhpParser\Node\Stmt\Use_::TYPE_CONSTANT ? 'const ' : '');
+        return $type === \PhpParser\Node\Stmt\Use_::TYPE_FUNCTION ? 'static ' :  '';
     }
 
     protected function pObjectProperty($node)
