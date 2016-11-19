@@ -178,6 +178,20 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         return $this->{'p' . $node->getType()}($node);
     }
 
+    public function pComments(array $comments)
+    {
+        $formattedComments = [];
+
+        foreach ($comments as $comment) {
+            $c = $comment->getReformattedText();
+            if ($c[0] == '#')
+                $c = '//' . substr($c, 1);
+            $formattedComments[] = $c;
+        }
+
+        return implode("\n", $formattedComments);
+    }
+
     /**
      * Removes "$" from properties.
      * 
@@ -434,18 +448,24 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     {
         $buffer = '';
         if ($node->class instanceof \PhpParser\Node\Name && $node->class->parts[0] == 'parent')
-            $buffer .= 'super';
+            $buffer .= 'super.';
+        elseif ($node->class instanceof \PhpParser\Node\Name && $node->class->parts[0] == 'self')
+            $buffer .= '';
         else
-            $buffer .= $this->pDereferenceLhs($node->class);
+            $buffer .= $this->pDereferenceLhs($node->class) . '.';
 
-        return $buffer . '.'
+        return $buffer
             . ($node->name instanceof Expr ? ($node->name instanceof Expr\Variable ? $this->p($node->name) : '{' . $this->p($node->name) . '}') : $node->name)
             . '(' . $this->pCommaSeparated($node->args) . ')';
     }
 
     public function pExpr_StaticPropertyFetch(\PhpParser\Node\Expr\StaticPropertyFetch $node)
     {
-        return $this->pDereferenceLhs($node->class) . '.' . $this->pObjectProperty($node->name);
+        if ($node->class instanceof \PhpParser\Node\Name && $node->class->parts[0] == 'self')
+            $buffer = '';
+        else
+            $buffer = $this->pDereferenceLhs($node->class) . '.';
+        return $buffer . $this->pObjectProperty($node->name);
     }
 
     public function pExpr_MethodCall(\PhpParser\Node\Expr\MethodCall $node)
@@ -478,7 +498,8 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
 
     public function pExpr_ClassConstFetch(\PhpParser\Node\Expr\ClassConstFetch $node)
     {
-        return $this->p($node->class) . '.' . $node->name;
+        $class = $node->class == 'self' ? '' : $this->p($node->class) . '.';
+        return  $class . $node->name;
     }
 
     /**
@@ -525,16 +546,14 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         $key = null;
         if (null !== $node->key) {
             if ($node->key instanceof \PhpParser\Node\Expr\ClassConstFetch) {
-                $class = $node->key->class == 'self' ? '' : $node->key->class . '.';
-                $key = '(' . $class . $node->key->name . ')';
+                $key = '(' . $this->pExpr_ClassConstFetch($node->key) . ')';
             } elseif ($node->key instanceof \PhpParser\Node\Expr\Variable) {
-                $key = '(' .$node->key->name . ')';
+                $key = '(' . $node->key->name . ')';
             } elseif ($node->key instanceof \PhpParser\Node\Scalar\String_) {
                 $key = $node->key->value;
-            } elseif ($node->key instanceof \PhpParser\Node\Expr\FuncCall 
-                || $node->key instanceof \PhpParser\Node\Expr\MethodCall
+            } elseif ($node->key instanceof \PhpParser\Node\Expr\FuncCall || $node->key instanceof \PhpParser\Node\Expr\MethodCall
             ) {
-                $key = '(' .$this->p($node->key) . ')';
+                $key = '(' . $this->p($node->key) . ')';
             } else {
                 $key = $this->p($node->key);
             }

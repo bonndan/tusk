@@ -35,6 +35,38 @@ class GroovyTest extends TestCase
 
         $this->assertContains("public final Integer ABC_DEF = 123", $this->parse($code));
     }
+    
+    public function testClassConstFetchWithoutSelf()
+    {
+        $code = "class abc {
+    const ABC_DEF = 123;
+    
+    function a()
+    {
+        return self::ABC_DEF;
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains("return ABC_DEF", $groovy);
+        $this->assertNotContains("self", $groovy);
+        $this->assertNotContains(".", $groovy);
+    }
+    
+    public function testStaticClassVarFetchWithoutSelf()
+    {
+        $code = "class abc {
+    private static \$a = 123;
+    
+    function a()
+    {
+        return self::\$a;
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains("return a", $groovy);
+        $this->assertNotContains("self", $groovy);
+        $this->assertNotContains(".", $groovy);
+    }
 
     public function testClassProperty()
     {
@@ -905,6 +937,17 @@ class A extends B
 ";
         $groovy = $this->parse($code);
         $this->assertContains("'key' + a", $groovy);
+    }
+    
+    public function testHashComment()
+    {
+        $code = "
+\$a = '1';
+#\$a = 2;
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("//\$a", $groovy);
+        $this->assertNotContains("#", $groovy);
     }
     
     /**

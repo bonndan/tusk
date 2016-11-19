@@ -17,6 +17,13 @@ the nodes in Groovy syntax.
 * fancy stuff like yield, destructors, magic methods and constants
 
 
-Parser errors:
+## Errors / TODO
 
-arrays with class const keys, concatenated keys
+* use function $name --> import static $name
+* iterate maps using for + set vars, because eachWithIndex does not allow break/continue
+* iterate lists using for, index possible?
+* add newline before multiline close when inner string ends on double quote
+* trait methods must be public :(
+* assign-in-if within parentheses
+* InvalidArgumentException --> IllegalArgumentException
+* LogicException --> RuntimeException
