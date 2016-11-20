@@ -364,17 +364,17 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
 
     public function pStmt_Foreach(\PhpParser\Node\Stmt\Foreach_ $node)
     {
-        //use eachWithIndex for key-value pairs
+        $keyHandling = '';
+        $valueVar = $this->p($node->valueVar);
         if (null !== $node->keyVar) {
-            return $this->p($node->expr) . '.eachWithIndex { ' .
-                $this->p($node->valueVar) . ", " . $this->p($node->keyVar) . ' -> ' .
-                $this->pStmts($node->stmts) . "\n" . '}';
+            $valueVar = 'entry';
+            $keyHandling = "\nif (" . $valueVar . " in Map.Entry) {\n"
+                . $this->p($node->keyVar) ." = entry.key\n" . $this->p($node->valueVar) . " = entry.value"
+                . "\n}";
         }
 
-        return 'for (' .
-            $this->p($node->valueVar) .
-            ' in ' . $this->p($node->expr) .
-            ') {'
+        return 'for (' . $valueVar . ' in ' . $this->p($node->expr) . ') {'
+            . $keyHandling 
             . $this->pStmts($node->stmts) . "\n" . '}';
     }
 

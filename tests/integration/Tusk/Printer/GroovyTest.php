@@ -236,8 +236,11 @@ foreach ($arr as $key => $value) {
 }';
 
         $groovy = $this->parse($code);
-        $this->assertContains('arr.eachWithIndex { value, key ->', $groovy);
-        $this->assertNotContains('for ($i=0;$i<10;$i++)', $groovy);
+        $this->assertContains('for (entry in arr) {', $groovy);
+        $this->assertContains('if (entry in Map.Entry) {', $groovy);
+        $this->assertContains('key = entry.key', $groovy);
+        $this->assertContains('value = entry.value', $groovy);
+        $this->assertNotContains('foreach', $groovy);
     }
     
     public function testStringConcat()

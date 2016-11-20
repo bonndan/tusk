@@ -62,7 +62,7 @@ class Tusk
     {
         $code = $file->getContents();
         $state = new State($file->getFilename());
-        $groovySrc = $this->toGroovy($this->getStatements($code), $state);
+        $groovySrc = $this->toGroovy($this->getStatements($code, $state), $state);
         if ($this->config->isConfigured()) {
             $target = $this->getPathForFile($groovySrc, $file);
             if (!is_dir(dirname($target))) {

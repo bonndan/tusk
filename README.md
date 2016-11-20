@@ -6,6 +6,7 @@ the nodes in Groovy syntax.
 
 ## Features
 
+* converts php expressions into valid Groovy
 * evaluates type information gathered by PHP-Parser and tries to find equivalents
 * uses DocBlock type information where available
 
@@ -19,6 +20,5 @@ the nodes in Groovy syntax.
 
 ## Errors / TODO
 
-* iterate maps using for + set vars, because eachWithIndex does not allow break/continue
-* iterate lists using for, index possible?
 * assign-in-if within parentheses
+* handle mixed-type return values in docblocks (using def?)
