@@ -13,7 +13,7 @@ class Destruct extends \PhpParser\NodeVisitorAbstract
             return;
         
         if ($node->name == '__destruct')
-            $node->name = 'close';
+            $node->name = ' /* TODO __destruct was used */ close';
     }
 
 }

@@ -596,8 +596,8 @@ class A {
     }
 }";
         $groovy = $this->parse($code);
-        $this->assertContains("public def close", $groovy);
-        $this->assertNotContains("__destruct", $groovy);
+        $this->assertContains("close()", $groovy);
+        $this->assertNotContains("__destruct()", $groovy);
     }
     
     public function testDie()
@@ -980,13 +980,27 @@ class A extends B
         $this->assertNotContains("#", $groovy);
     }
     
+    public function testInvalidArgumentException()
+    {
+        $code = "
+throw new InvalidArgumentException('test');
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("IllegalArgumentException", $groovy);
+        $this->assertNotContains("InvalidArgumentException", $groovy);
+    }
+    
     /**
      * @param string $code without leading <?php 
      * @return string
      */
     private function parse(string $code): string
     {
-        return $this->tusk->toGroovy($this->tusk->getStatements("<?php " . $code));
+        $state = new Tusk\State('test');
+        return $this->tusk->toGroovy(
+            $this->tusk->getStatements("<?php " . $code, $state),
+            $state
+        );
     }
 
     private function normalizeInvisibleChars(string $str) : string

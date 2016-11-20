@@ -61,7 +61,8 @@ class Tusk
     private function runFile(SplFileInfo $file)
     {
         $code = $file->getContents();
-        $groovySrc = $this->toGroovy($this->getStatements($code), $file->getFilename());
+        $state = new State($file->getFilename());
+        $groovySrc = $this->toGroovy($this->getStatements($code), $state);
         if ($this->config->isConfigured()) {
             $target = $this->getPathForFile($groovySrc, $file);
             if (!is_dir(dirname($target))) {
@@ -76,7 +77,7 @@ class Tusk
         }
     }
     
-    private function getPathForFile(File $tuskFile, SplFileInfo $fileInfo) : string
+    private function getPathForFile(State $tuskFile, SplFileInfo $fileInfo) : string
     {
         $targetFile = $this->config->packageBaseDir 
                 . DIRECTORY_SEPARATOR 
@@ -100,24 +101,25 @@ class Tusk
         }
     }
 
-    public function toGroovy(array $statements, string $filename = null) : File
+    public function toGroovy(array $statements, \Tusk\State $state) : State
     {
-        $printer = new Printer\Groovy(['filename' => $filename]);
-        $src = $printer->prettyPrint($statements);
-        return new File($src, $printer->getPackage(), $filename);
+        $printer = new Printer\Groovy(['state' => $state]);
+        $state->setSrc($printer->prettyPrint($statements));
+        return $state;
     }
 
-    public function getStatements(string $code): array
+    public function getStatements(string $code, State $state): array
     {
         $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
+        $stmts = $parser->parse($code);
 
+        //traverser sequence is important
         $traverser = new \PhpParser\NodeTraverser();
+        $traverser->addVisitor(new NodeVisitor\Namespace_($state));
         $traverser->addVisitor(new NodeVisitor\Destruct());
         $traverser->addVisitor(new NodeVisitor\MagicCall());
-
-        $stmts = $parser->parse($code);
-        $stmts = $traverser->traverse($stmts);
-        return $stmts;
+        $traverser->addVisitor(new NodeVisitor\BuiltInException($state));
+        return $traverser->traverse($stmts);
     }
 
 }

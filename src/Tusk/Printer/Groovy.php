@@ -14,17 +14,11 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
      * @var \phpDocumentor\Reflection\DocBlockFactory
      */
     private $docblockFactory;
-    private $package = '';
 
     public function __construct(array $options = array())
     {
         parent::__construct($options);
         $this->docblockFactory = \phpDocumentor\Reflection\DocBlockFactory::createInstance();
-    }
-
-    public function getPackage(): string
-    {
-        return $this->package;
     }
 
     public function pStmt_ClassConst(\PhpParser\Node\Stmt\ClassConst $node)
@@ -141,7 +135,13 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         return '';
     }
 
-    private function asPackage(string $namespaced): string
+    /**
+     * Returns the corresponding package notation.
+     * 
+     * @param string $namespaced
+     * @return string
+     */
+    public static function asPackage(string $namespaced): string
     {
         return ltrim(str_replace("\\", ".", $namespaced), '.');
     }
@@ -164,12 +164,16 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     public function pStmt_Namespace(\PhpParser\Node\Stmt\Namespace_ $node)
     {
         if ($this->canUseSemicolonNamespaces) {
-            $this->package = $this->asPackage($this->p($node->name));
-            return 'package ' . $this->package . "\n" . $this->pStmts($node->stmts, false);
+            return 'package ' . self::asPackage($this->p($node->name)) . "\n" . $this->pStmts($node->stmts, false);
         } else {
             return 'package ' . (null !== $node->name ? ' ' . $this->p($node->name) : '')
                 . ' {' . $this->pStmts($node->stmts) . "\n" . '}';
         }
+    }
+    
+    public function pStmt_Throw(\PhpParser\Node\Stmt\Throw_ $node)
+    {
+        return 'throw ' . $this->p($node->expr);
     }
 
     public function p(\PhpParser\Node $node)
@@ -436,12 +440,12 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
 
     public function pName(\PhpParser\Node\Name $node)
     {
-        return $this->asPackage(parent::pName($node));
+        return self::asPackage(parent::pName($node));
     }
 
     public function pName_FullyQualified(\PhpParser\Node\Name\FullyQualified $node): string
     {
-        return $this->asPackage(parent::pName_FullyQualified($node));
+        return self::asPackage(parent::pName_FullyQualified($node));
     }
 
     public function pExpr_StaticCall(\PhpParser\Node\Expr\StaticCall $node)
@@ -484,7 +488,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     public function pStmt_Use(\PhpParser\Node\Stmt\Use_ $node)
     {
         return 'import ' . $this->pUseType($node->type)
-            . $this->asPackage($this->pCommaSeparated($node->uses));
+            . self::asPackage($this->pCommaSeparated($node->uses));
     }
 
     /**
@@ -713,6 +717,14 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
             return $node;
         }
     }
+    
+    private function getState() : \Tusk\State
+    {
+        if (!isset($this->options['state']))
+            throw new \RuntimeException('No state option present.');
+        
+        return $this->options['state'];
+    }
 
     private function getException(string $unsupported)
     {
@@ -726,7 +738,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
 
     private function throwError(\PhpParser\Node $node)
     {
-        throw new \PhpParser\Error("ArrayItem conversion error on " . serialize($node) . "in " . $this->options['filename'], $node->getAttributes());
+        throw new \PhpParser\Error("ArrayItem conversion error on " . serialize($node) . "in " . $this->getState()->getFilename(), $node->getAttributes());
     }
 
 }
