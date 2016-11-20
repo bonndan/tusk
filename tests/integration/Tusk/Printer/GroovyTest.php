@@ -990,6 +990,32 @@ throw new InvalidArgumentException('test');
         $this->assertNotContains("InvalidArgumentException", $groovy);
     }
     
+    public function testTraitPublicMethods()
+    {
+        $code = "trait A 
+{
+    protected function a(){
+        return 0;
+    }
+    
+    private function b(){
+        return 0;
+    }
+    
+    protected static function c(){
+        return 0;
+    }
+
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("public def a()", $groovy);
+        $this->assertContains("public def b()", $groovy);
+        $this->assertContains("public static def c()", $groovy);
+        $this->assertNotContains("protected", $groovy);
+        $this->assertNotContains("private", $groovy);
+    }
+    
     /**
      * @param string $code without leading <?php 
      * @return string

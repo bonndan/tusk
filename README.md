@@ -21,7 +21,4 @@ the nodes in Groovy syntax.
 
 * iterate maps using for + set vars, because eachWithIndex does not allow break/continue
 * iterate lists using for, index possible?
-* trait methods must be public :(
 * assign-in-if within parentheses
-* InvalidArgumentException --> IllegalArgumentException
-* LogicException --> RuntimeException
