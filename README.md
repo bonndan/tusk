@@ -19,6 +19,3 @@ the nodes in Groovy syntax.
 
 
 ## Errors / TODO
-
-* assign-in-if within parentheses
-* handle mixed-type return values in docblocks (using def?)

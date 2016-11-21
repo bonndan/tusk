@@ -119,10 +119,15 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         /**
          * @todo support key-value type annotation which is supported by phpdocumentor
          */
-        if ($typeObject instanceof \phpDocumentor\Reflection\DocBlock\Tags\Var_ || $typeObject instanceof \phpDocumentor\Reflection\DocBlock\Tags\Param || $typeObject instanceof \phpDocumentor\Reflection\DocBlock\Tags\Return_
+        if ($typeObject instanceof \phpDocumentor\Reflection\DocBlock\Tags\Var_ 
+            || $typeObject instanceof \phpDocumentor\Reflection\DocBlock\Tags\Param 
+            || $typeObject instanceof \phpDocumentor\Reflection\DocBlock\Tags\Return_
         ) {
 
             $raw = (string) $typeObject->getType();
+            if (strpos($raw, '|') !== false)
+                return 'def';
+            
             $buffer = (strpos($raw, '[]') !== false) ? "[]" : '';
             switch (str_replace('[]', '', $raw)) {
                 case "string": return "String" . $buffer;
@@ -369,8 +374,9 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         if (null !== $node->keyVar) {
             $valueVar = 'entry';
             $keyHandling = "\nif (" . $valueVar . " in Map.Entry) {\n"
-                . $this->p($node->keyVar) ." = entry.key\n" . $this->p($node->valueVar) . " = entry.value"
-                . "\n}";
+                . "def " . $this->p($node->keyVar) ." = entry.key\n" 
+                . "def " . $this->p($node->valueVar) . " = entry.value\n"
+                . "}\n";
         }
 
         return 'for (' . $valueVar . ' in ' . $this->p($node->expr) . ') {'
@@ -690,14 +696,29 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
 
     public function pStmt_Goto(\PhpParser\Node\Stmt\Goto_ $node)
     {
-        return $this->getException("goto is not supported.");
+        return $this->getTodo("goto is not supported.") . ' ' .$this->getException("goto is not supported.");
     }
 
     public function pStmt_Global(\PhpParser\Node\Stmt\Global_ $node)
     {
-        return $this->getException("global is not supported, maybe try public static class members.");
+        return  $this->getTodo("global is not supported.") . ' ' .
+            $this->getException("global is not supported, maybe try public static class members.");
     }
 
+    public function pStmt_If(\PhpParser\Node\Stmt\If_ $node)
+    {
+        if ($node->cond instanceof \PhpParser\Node\Expr\Assign) {
+            $cond = '(' . $this->p($node->cond) . ')';
+        } else {
+            $cond = $this->p($node->cond);
+        }
+        
+        return 'if (' . $cond . ') {'
+             . $this->pStmts($node->stmts) . "\n" . '}'
+             . $this->pImplode($node->elseifs)
+             . (null !== $node->else ? $this->p($node->else) : '');
+    }
+    
     public function pStmt_ElseIf(\PhpParser\Node\Stmt\ElseIf_ $node)
     {
         return ' else if (' . $this->p($node->cond) . ') {'

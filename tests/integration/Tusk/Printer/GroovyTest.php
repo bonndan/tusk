@@ -238,8 +238,8 @@ foreach ($arr as $key => $value) {
         $groovy = $this->parse($code);
         $this->assertContains('for (entry in arr) {', $groovy);
         $this->assertContains('if (entry in Map.Entry) {', $groovy);
-        $this->assertContains('key = entry.key', $groovy);
-        $this->assertContains('value = entry.value', $groovy);
+        $this->assertContains('def key = entry.key', $groovy);
+        $this->assertContains('def value = entry.value', $groovy);
         $this->assertNotContains('foreach', $groovy);
     }
     
@@ -418,6 +418,23 @@ class A {
 }";
         $groovy = $this->parse($code);
         $this->assertContains('public String test(String name, def arguments)', $groovy);
+    }
+    
+    public function testParamMixedTypeDocComment()
+    {
+        $code = "
+class A {
+    
+    /**
+     * @param string|Name \$name
+     * @return string
+     */
+    public function test(\$name) {
+        return 'test';
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains('public String test(def name)', $groovy);
     }
     
     public function testParamTypeDocComment2()
@@ -1017,6 +1034,17 @@ throw new InvalidArgumentException('test');
         $this->assertContains("public static def c()", $groovy);
         $this->assertNotContains("protected", $groovy);
         $this->assertNotContains("private", $groovy);
+    }
+    
+    public function testIfExpressionEval()
+    {
+        $code = "
+if(\$a = trim(\$b))
+    echo \$a;
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("if ((a = trim(b)))", $groovy);
+        $this->assertNotContains("if (a = trim(b))", $groovy);
     }
     
     /**
