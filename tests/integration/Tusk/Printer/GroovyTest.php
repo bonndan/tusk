@@ -501,6 +501,22 @@ class A {
         $this->assertContains('catch (Error e)', $groovy);
     }
     
+    public function testMultiCatch()
+    {
+        $code = "
+class A {
+    
+    public function test(\$flag) {
+        try {
+            test();
+        } catch (A|B \$e) {
+        }
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains('catch (A|B e)', $groovy);
+    }
+    
     public function testUseImport()
     {
         $code = "

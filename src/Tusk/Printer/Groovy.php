@@ -487,7 +487,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
 
     public function pStmt_Catch(\PhpParser\Node\Stmt\Catch_ $node)
     {
-        return ' catch (' . $this->p($node->type) . ' ' . $node->var . ') {'
+        return ' catch (' . $this->pImplode($node->types, '|') . ' ' . $node->var . ') {'
             . $this->pStmts($node->stmts) . "\n" . '}';
     }
 
