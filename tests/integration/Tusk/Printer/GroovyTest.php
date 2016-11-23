@@ -899,7 +899,7 @@ class A {
     }
 }";
         $groovy = $this->parse($code);
-        $this->assertContains("if (b)", $groovy);
+        $this->assertContains("if (!b)", $groovy);
         $this->assertNotContains("empty(", $groovy);
     }
     

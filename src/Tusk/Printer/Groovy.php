@@ -710,7 +710,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
 
     public function pExpr_Empty(\PhpParser\Node\Expr\Empty_ $node)
     {
-        return $this->p($node->expr);
+        return '!'.$this->p($node->expr);
     }
 
     public function pExpr_Eval(\PhpParser\Node\Expr\Eval_ $node)
