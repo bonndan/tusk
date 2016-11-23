@@ -493,10 +493,34 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
 
     public function pStmt_Use(\PhpParser\Node\Stmt\Use_ $node)
     {
-        return 'import ' . $this->pUseType($node->type)
-            . self::asPackage($this->pCommaSeparated($node->uses));
+        $buffer = '';
+        foreach ($node->uses as $use) {
+            $buffer .= $this->import($node->type, $use->name, ($use->name->getLast() !== $use->alias ? ' as ' .$use->alias : null));
+        }
+
+        return $buffer;
+    }
+    
+    public function pStmt_GroupUse(\PhpParser\Node\Stmt\GroupUse $node)
+    {
+        $buffer = "";
+        foreach ($node->uses as $use) {
+            $buffer .= $this->import($use->type, $node->prefix . '.' .$use->name);
+        }
+        
+        return $buffer;
+    }
+    
+    public function pStmt_UseUse(\PhpParser\Node\Stmt\UseUse $node)
+    {
+        return $this->import($node->type, $node->name, ($node->name->getLast() !== $node->alias ? ' as ' .$node->alias : null));
     }
 
+    private function import($type, $name, $alias = null) : string
+    {
+        return 'import ' . $this->pUseType($type) . self::asPackage($name) . $alias . PHP_EOL;
+    }
+    
     /**
      * @todo println is not echo!
      */

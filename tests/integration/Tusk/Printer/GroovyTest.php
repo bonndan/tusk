@@ -534,6 +534,44 @@ class A {
         $this->assertNotContains('use B\BClass', $groovy);
     }
     
+    public function testUseMultiImport()
+    {
+        $code = "
+            
+use B\{BClass, CClass};
+
+class A {
+    
+    public function test(BClass \$a) {
+
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains('import B.BClass', $groovy);
+        $this->assertContains('import B.CClass', $groovy);
+        $this->assertNotContains('use', $groovy);
+    }
+    
+    public function testUseFunctionImport()
+    {
+        $code = "
+use function B\hello;
+";
+        $groovy = $this->parse($code);
+        $this->assertContains('import static B.hello', $groovy);
+        $this->assertNotContains('use function', $groovy);
+    }
+    
+    public function testUseAslias()
+    {
+        $code = "
+use B\Hello as ABC;
+";
+        $groovy = $this->parse($code);
+        $this->assertContains('import B.Hello as ABC', $groovy);
+        $this->assertNotContains('use', $groovy);
+    }
+    
     public function testStrictComparison()
     {
         $code = "
