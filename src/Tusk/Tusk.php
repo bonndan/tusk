@@ -120,6 +120,7 @@ class Tusk
         $traverser->addVisitor(new NodeVisitor\MagicCall());
         $traverser->addVisitor(new NodeVisitor\BuiltInException($state));
         $traverser->addVisitor(new NodeVisitor\PublicTraitMethods());
+        $traverser->addVisitor(new NodeVisitor\ReservedWords());
         return $traverser->traverse($stmts);
     }
 

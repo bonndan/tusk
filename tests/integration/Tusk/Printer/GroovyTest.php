@@ -1101,6 +1101,27 @@ if(\$a = trim(\$b))
         $this->assertNotContains("if (a = trim(b))", $groovy);
     }
     
+    public function testReservedWordVar()
+    {
+        $code = "
+\$short = trim(\$b);
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("_short = trim(b)", $groovy);
+    }
+    
+    public function testReservedWordClassName()
+    {
+        $code = "
+class Short {
+
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("class _Short", $groovy);
+        $this->assertContains("TODO", $groovy);
+    }
+    
     /**
      * @param string $code without leading <?php 
      * @return string

@@ -19,3 +19,5 @@ the nodes in Groovy syntax.
 
 
 ## Errors / TODO
+
+* redefined variables not possible (first int then def)
