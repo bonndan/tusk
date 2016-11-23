@@ -748,6 +748,11 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         return ' else if (' . $this->p($node->cond) . ') {'
             . $this->pStmts($node->stmts) . "\n" . '}';
     }
+    
+    public function pExpr_List(\PhpParser\Node\Expr\List_ $node)
+    {
+        return $this->getTodo("list is not fully supported, check args") . ' def(' . $this->pCommaSeparated($node->items) . ')';
+    }
 
     private function pUseType($type)
     {

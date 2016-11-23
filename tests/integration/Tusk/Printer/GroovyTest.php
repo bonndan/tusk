@@ -1122,6 +1122,16 @@ class Short {
         $this->assertContains("TODO", $groovy);
     }
     
+    public function testList()
+    {
+        $code = "
+list(\$a, \$b) = \$data;
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("def(a, b) = data", $groovy);
+        $this->assertContains("TODO", $groovy);
+    }
+    
     /**
      * @param string $code without leading <?php 
      * @return string
