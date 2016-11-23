@@ -21,3 +21,4 @@ the nodes in Groovy syntax.
 ## Errors / TODO
 
 * redefined variables not possible (first int then def)
+* !empty is transpiled into !!, knownledge about parent/previous sibling is required

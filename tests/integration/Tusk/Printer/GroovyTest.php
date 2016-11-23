@@ -24,7 +24,7 @@ class GroovyTest extends TestCase
     const ABC_DEF = '123';
 }";
 
-        $this->assertContains("public final String ABC_DEF = '123'", $this->parse($code));
+        $this->assertContains("public final static String ABC_DEF = '123'", $this->parse($code));
     }
 
     public function testClassConstInteger()
@@ -33,7 +33,7 @@ class GroovyTest extends TestCase
     const ABC_DEF = 123;
 }";
 
-        $this->assertContains("public final Integer ABC_DEF = 123", $this->parse($code));
+        $this->assertContains("public final static Integer ABC_DEF = 123", $this->parse($code));
     }
     
     public function testClassConstFetchWithoutSelf()
@@ -900,6 +900,19 @@ class A {
 }";
         $groovy = $this->parse($code);
         $this->assertContains("if (!b)", $groovy);
+        $this->assertNotContains("empty(", $groovy);
+    }
+    
+    public function testNotEmptyIsOmitted()
+    {
+        $code = "
+function a(\$b) {
+    if (!empty(\$b))
+        return 'n';
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("if (!!b)", $groovy);
         $this->assertNotContains("empty(", $groovy);
     }
     

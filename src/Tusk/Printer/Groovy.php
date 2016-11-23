@@ -23,7 +23,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
 
     public function pStmt_ClassConst(\PhpParser\Node\Stmt\ClassConst $node)
     {
-        $buffer = 'public final ';
+        $buffer = 'public final static ';
 
         //add type if one const
         if (count($node->consts) == 1) {
