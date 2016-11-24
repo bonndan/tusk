@@ -116,11 +116,13 @@ class Tusk
         //traverser sequence is important
         $traverser = new \PhpParser\NodeTraverser();
         $traverser->addVisitor(new NodeVisitor\Namespace_($state));
+        $traverser->addVisitor(new NodeVisitor\TreeRelation($state));
         $traverser->addVisitor(new NodeVisitor\Destruct());
         $traverser->addVisitor(new NodeVisitor\MagicCall());
         $traverser->addVisitor(new NodeVisitor\BuiltInException($state));
         $traverser->addVisitor(new NodeVisitor\PublicTraitMethods());
         $traverser->addVisitor(new NodeVisitor\ReservedWords());
+        $traverser->addVisitor(new NodeVisitor\VariableDefinition());
         return $traverser->traverse($stmts);
     }
 

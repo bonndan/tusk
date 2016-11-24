@@ -28,11 +28,17 @@ class BuiltInException extends StatefulVisitor
 
     public function enterNode(\PhpParser\Node $node)
     {
-        if (!$node instanceof \PhpParser\Node\Name)
+        if (!$node instanceof \PhpParser\Node\Name && !$node instanceof \PhpParser\Node\Name\FullyQualified)
             return;
-
+     
+        $isFQ = $node instanceof \PhpParser\Node\Name\FullyQualified;
         foreach ($node->parts as $i => $part) {
             foreach (self::$conversion as $from => $to) {
+                if ($isFQ && $from == $part) {
+                    $node->parts[$i] = $to;
+                    continue;
+                }
+                
                 if (strpos($part, $from) !== false && $this->isBuiltin($part))
                     $node->parts[$i] = $to;
             }

@@ -903,7 +903,7 @@ class A {
         $this->assertNotContains("empty(", $groovy);
     }
     
-    public function testNotEmptyIsOmitted()
+    public function testLiteralNotEmptyIsOmitted()
     {
         $code = "
 function a(\$b) {
@@ -912,7 +912,7 @@ function a(\$b) {
 }
 ";
         $groovy = $this->parse($code);
-        $this->assertContains("if (!!b)", $groovy);
+        $this->assertContains("if (b)", $groovy);
         $this->assertNotContains("empty(", $groovy);
     }
     
@@ -1067,10 +1067,27 @@ class A extends B
         $this->assertNotContains("#", $groovy);
     }
     
-    public function testInvalidArgumentException()
+    public function testInvalidArgumentExceptionWithoutNamespace()
     {
         $code = "
 throw new InvalidArgumentException('test');
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("IllegalArgumentException", $groovy);
+        $this->assertNotContains("InvalidArgumentException", $groovy);
+    }
+    
+    public function testInvalidArgumentExceptionInClass()
+    {
+        $code = "
+namespace A;
+
+class B {
+    function b()
+    {
+        throw new \\InvalidArgumentException('test');
+    }
+}
 ";
         $groovy = $this->parse($code);
         $this->assertContains("IllegalArgumentException", $groovy);
@@ -1135,6 +1152,37 @@ class Short {
         $this->assertContains("TODO", $groovy);
     }
     
+    public function testReservedWordMethodCall()
+    {
+        $code = "
+class A {
+    public function a()
+    {
+        \$this->b();
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("b()", $groovy);
+        $this->assertNotContains("this", $groovy);
+    }
+    
+    public function testReservedWordParam()
+    {
+        $code = "
+class A {
+    public function a(\$new)
+    {
+        \$this->b(\$new);
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("a(_new)", $groovy);
+        $this->assertContains("b(_new)", $groovy);
+        $this->assertNotContains("(new", $groovy);
+    }
+    
     public function testList()
     {
         $code = "
@@ -1143,6 +1191,23 @@ list(\$a, \$b) = \$data;
         $groovy = $this->parse($code);
         $this->assertContains("def(a, b) = data", $groovy);
         $this->assertContains("TODO", $groovy);
+    }
+    
+    public function testAssignVar()
+    {
+        $code = "
+class A {
+    public function a()
+    {
+        \$a = \$this->getB();
+        \$a = 0;
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("def a = getB()", $groovy);
+        $this->assertContains("a = 0", $groovy);
+        $this->assertNotContains("def a = 0", $groovy);
     }
     
     /**

@@ -77,6 +77,14 @@ class ReservedWords extends \PhpParser\NodeVisitorAbstract
             }
         }
         
+        if ($node instanceof \PhpParser\Node\Param) {
+            foreach (self::$reservedWords as $word) {
+                if (strtolower($node->name) == $word) {
+                    $node->name = '_' . $node->name;
+                }
+            }
+        }
+       
         if ($node instanceof \PhpParser\Node\Stmt\Class_) {
             foreach (self::$reservedWords as $word) {
                 if (strtolower($node->name) == $word) {

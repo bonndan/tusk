@@ -12,7 +12,7 @@ the nodes in Groovy syntax.
 
 ## Challenges
 
-* arrays. It's hard to find out whether a PHP array can be translated into a List or Map or won't work.
+* arrays. It's hard to find out whether a PHP array can be translated into a Collection, Array or Map or won't work.
 * PHP built-in functions need to be rewritten in Java or Groovy or replaced with equivalents.
 * garbage like "goto"
 * fancy stuff like yield, destructors, magic methods and constants
@@ -22,3 +22,6 @@ the nodes in Groovy syntax.
 
 * redefined variables not possible (first int then def)
 * !empty is transpiled into !!, knownledge about parent/previous sibling is required
+* use eachwithindex if loop does not contain: break, continue, return
+* prevent useless casting: if ((int) id > 0) where id is already int
+* simplyfy boolean comparison: "false==" or "true=="

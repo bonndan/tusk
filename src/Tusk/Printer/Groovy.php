@@ -310,7 +310,15 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
 
     public function pExpr_Assign(\PhpParser\Node\Expr\Assign $node)
     {
-        return parent::pExpr_Assign($node);
+        $buffer = '';
+        if ($node->var instanceof \PhpParser\Node\Expr\Variable) {
+            $hasWhitespace = strpos($node->var->name, " ") !== false;
+            $isDefition = $node->var->getAttribute(\Tusk\NodeVisitor\VariableDefinition::MARKER);
+            if (!$hasWhitespace && $isDefition)
+                $buffer = 'def ';
+        }
+        
+        return $buffer . parent::pExpr_Assign($node);
     }
 
     public function pExpr_BinaryOp_Concat(\PhpParser\Node\Expr\BinaryOp\Concat $node)
@@ -708,9 +716,26 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         return $this->getTodo('__FILE__ was used') . " getClass().getProtectionDomain().getCodeSource().getLocation().getPath()";
     }
 
+    /**
+     * Empty transpiles to "!" unless the previous symbol is "!"
+     * 
+     * @param \PhpParser\Node\Expr\Empty_ $node
+     * @return string
+     */
     public function pExpr_Empty(\PhpParser\Node\Expr\Empty_ $node)
     {
-        return '!'.$this->p($node->expr);
+        $parent = $node->getAttribute(\Tusk\NodeVisitor\TreeRelation::PARENT);
+        $buffer = ($parent instanceof \PhpParser\Node\Expr\BooleanNot) ? '' : '!';
+        return $buffer . $this->p($node->expr);
+    }
+    
+    public function pExpr_BooleanNot(\PhpParser\Node\Expr\BooleanNot $node)
+    {
+        $buffer = '!';
+        if ($node->expr instanceof \PhpParser\Node\Expr\Empty_)
+            $buffer = '';
+        
+        return $this->pPrefixOp('Expr_BooleanNot', $buffer, $node->expr);
     }
 
     public function pExpr_Eval(\PhpParser\Node\Expr\Eval_ $node)
