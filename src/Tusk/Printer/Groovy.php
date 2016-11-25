@@ -2,37 +2,123 @@
 
 namespace Tusk\Printer;
 
+use Exception;
+use phpDocumentor\Reflection\DocBlock\Tags\Param;
+use phpDocumentor\Reflection\DocBlock\Tags\Return_;
+use phpDocumentor\Reflection\DocBlock\Tags\Var_;
+use phpDocumentor\Reflection\DocBlockFactory;
+use PhpParser\Comment\Doc;
+use PhpParser\Error;
+use PhpParser\Node;
+use PhpParser\Node\Expr;
+use PhpParser\Node\Expr\Array_ as Array_2;
+use PhpParser\Node\Expr\ArrayItem;
+use PhpParser\Node\Expr\Assign;
+use PhpParser\Node\Expr\AssignOp\Concat as Concat2;
+use PhpParser\Node\Expr\BinaryOp\Coalesce;
+use PhpParser\Node\Expr\BinaryOp\Concat;
+use PhpParser\Node\Expr\BinaryOp\Identical;
+use PhpParser\Node\Expr\BinaryOp\LogicalAnd;
+use PhpParser\Node\Expr\BinaryOp\LogicalOr;
+use PhpParser\Node\Expr\BinaryOp\LogicalXor;
+use PhpParser\Node\Expr\BinaryOp\NotIdentical;
+use PhpParser\Node\Expr\BooleanNot;
+use PhpParser\Node\Expr\Cast\Array_;
+use PhpParser\Node\Expr\Cast\Bool_;
+use PhpParser\Node\Expr\Cast\Double;
+use PhpParser\Node\Expr\Cast\Int_;
+use PhpParser\Node\Expr\Cast\String_ as String_2;
+use PhpParser\Node\Expr\Cast\Unset_ as Unset_2;
+use PhpParser\Node\Expr\ClassConstFetch;
+use PhpParser\Node\Expr\Closure;
+use PhpParser\Node\Expr\Empty_;
+use PhpParser\Node\Expr\Eval_;
+use PhpParser\Node\Expr\Exit_;
+use PhpParser\Node\Expr\FuncCall;
+use PhpParser\Node\Expr\Isset_;
+use PhpParser\Node\Expr\List_;
+use PhpParser\Node\Expr\MethodCall;
+use PhpParser\Node\Expr\PropertyFetch;
+use PhpParser\Node\Expr\StaticCall;
+use PhpParser\Node\Expr\StaticPropertyFetch;
+use PhpParser\Node\Expr\Variable;
+use PhpParser\Node\Expr\Yield_;
+use PhpParser\Node\FunctionLike;
+use PhpParser\Node\Name;
+use PhpParser\Node\Name\FullyQualified;
+use PhpParser\Node\Param as Param2;
+use PhpParser\Node\Scalar\LNumber;
+use PhpParser\Node\Scalar\MagicConst\Class_ as Class_2;
+use PhpParser\Node\Scalar\MagicConst\Dir;
+use PhpParser\Node\Scalar\MagicConst\File;
+use PhpParser\Node\Scalar\MagicConst\Function_ as Function_2;
+use PhpParser\Node\Scalar\MagicConst\Line;
+use PhpParser\Node\Scalar\MagicConst\Method;
+use PhpParser\Node\Scalar\String_;
+use PhpParser\Node\Stmt;
+use PhpParser\Node\Stmt\Catch_;
+use PhpParser\Node\Stmt\Class_;
+use PhpParser\Node\Stmt\ClassConst;
+use PhpParser\Node\Stmt\ClassMethod;
+use PhpParser\Node\Stmt\Const_;
+use PhpParser\Node\Stmt\Echo_;
+use PhpParser\Node\Stmt\ElseIf_;
+use PhpParser\Node\Stmt\For_;
+use PhpParser\Node\Stmt\Foreach_;
+use PhpParser\Node\Stmt\Function_;
+use PhpParser\Node\Stmt\Global_;
+use PhpParser\Node\Stmt\Goto_;
+use PhpParser\Node\Stmt\GroupUse;
+use PhpParser\Node\Stmt\If_;
+use PhpParser\Node\Stmt\Namespace_;
+use PhpParser\Node\Stmt\Nop;
+use PhpParser\Node\Stmt\Property;
+use PhpParser\Node\Stmt\PropertyProperty;
+use PhpParser\Node\Stmt\Return_ as Return_2;
+use PhpParser\Node\Stmt\Throw_;
+use PhpParser\Node\Stmt\TraitUse;
+use PhpParser\Node\Stmt\TraitUseAdaptation\Precedence;
+use PhpParser\Node\Stmt\Unset_;
+use PhpParser\Node\Stmt\Use_;
+use PhpParser\Node\Stmt\UseUse;
+use PhpParser\PrettyPrinter\Standard;
+use RuntimeException;
+use SebastianBergmann\CodeCoverage\Report\Xml\Node as Node2;
+use Tusk\NodeVisitor\TreeRelation;
+use Tusk\NodeVisitor\VariableDefinition;
+use Tusk\State;
+
 /**
  * Stateful pretty printer for Groovy output.
  * 
  *
  */
-class Groovy extends \PhpParser\PrettyPrinter\Standard
+class Groovy extends Standard
 {
 
     /**
-     * @var \phpDocumentor\Reflection\DocBlockFactory
+     * @var DocBlockFactory
      */
     private $docblockFactory;
 
     public function __construct(array $options = array())
     {
         parent::__construct($options);
-        $this->docblockFactory = \phpDocumentor\Reflection\DocBlockFactory::createInstance();
+        $this->docblockFactory = DocBlockFactory::createInstance();
     }
 
-    public function pStmt_ClassConst(\PhpParser\Node\Stmt\ClassConst $node)
+    public function pStmt_ClassConst(ClassConst $node)
     {
         $buffer = 'public final static ';
 
         //add type if one const
         if (count($node->consts) == 1) {
-            if ($node->consts[0]->value instanceof \PhpParser\Node\Scalar\LNumber) {
+            if ($node->consts[0]->value instanceof LNumber) {
                 $buffer .= "Integer ";
                 return $buffer . $this->p($node->consts[0]);
             }
 
-            if ($node->consts[0]->value instanceof \PhpParser\Node\Scalar\String_) {
+            if ($node->consts[0]->value instanceof String_) {
                 $buffer .= "String ";
                 return $buffer . $this->p($node->consts[0]);
             }
@@ -45,18 +131,18 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     /**
      * @todo prevent multiple same imports
      */
-    public function pStmt_Const(\PhpParser\Node\Stmt\Const_ $node)
+    public function pStmt_Const(Const_ $node)
     {
         $buffer = "import groovy.transform.Field" . PHP_EOL . '@Field ';
 
         //add type if one const
         if (count($node->consts) == 1) {
-            if ($node->consts[0]->value instanceof \PhpParser\Node\Scalar\LNumber) {
+            if ($node->consts[0]->value instanceof LNumber) {
                 $buffer .= "Integer ";
                 $buffer .= $this->p($node->consts[0]);
             }
 
-            if ($node->consts[0]->value instanceof \PhpParser\Node\Scalar\String_) {
+            if ($node->consts[0]->value instanceof String_) {
                 $buffer .= "String ";
                 $buffer .= $this->p($node->consts[0]);
             }
@@ -71,13 +157,13 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     /**
      * Assigns the class name to the cosntructor function.
      * 
-     * @param \PhpParser\Node\Stmt\Class_ $node
+     * @param Class_ $node
      * @return type
      */
-    public function pStmt_Class(\PhpParser\Node\Stmt\Class_ $node)
+    public function pStmt_Class(Class_ $node)
     {
         foreach ($node->stmts as $st) {
-            if ($st instanceof \PhpParser\Node\Stmt\ClassMethod && $st->name == '__construct') {
+            if ($st instanceof ClassMethod && $st->name == '__construct') {
                 $st->name = $node->name;
                 $st->isConstructor = true;
             }
@@ -86,7 +172,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         return parent::pStmt_Class($node);
     }
 
-    public function pStmt_Property(\PhpParser\Node\Stmt\Property $node)
+    public function pStmt_Property(Property $node)
     {
         $buffer = (0 === $node->type ? 'var ' : $this->pModifiers($node->type));
 
@@ -108,20 +194,20 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
 
     private function getType($typeObject): string
     {
-        if ($typeObject instanceof \PhpParser\Node\Scalar\LNumber) {
+        if ($typeObject instanceof LNumber) {
             return "Integer";
         }
 
-        if ($typeObject instanceof \PhpParser\Node\Scalar\String_) {
+        if ($typeObject instanceof String_) {
             return "String";
         }
 
         /**
          * @todo support key-value type annotation which is supported by phpdocumentor
          */
-        if ($typeObject instanceof \phpDocumentor\Reflection\DocBlock\Tags\Var_ 
-            || $typeObject instanceof \phpDocumentor\Reflection\DocBlock\Tags\Param 
-            || $typeObject instanceof \phpDocumentor\Reflection\DocBlock\Tags\Return_
+        if ($typeObject instanceof Var_ 
+            || $typeObject instanceof Param 
+            || $typeObject instanceof Return_
         ) {
 
             $raw = (string) $typeObject->getType();
@@ -133,6 +219,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
                 case "string": return "String" . $buffer;
                 case "int": return "Integer" . $buffer;
                 case "array": return "def";
+                case "mixed": return "def";
                 default : return $this->asPackage($raw) . '';
             }
         }
@@ -151,11 +238,11 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         return ltrim(str_replace("\\", ".", $namespaced), '.');
     }
 
-    private function getNodeDocBlockTags(\PhpParser\Node\Stmt $node): array
+    private function getNodeDocBlockTags(Stmt $node): array
     {
         $comments = $node->getAttributes('comments');
         if ($comments && isset($comments['comments'][0])) {
-            $doc = $comments['comments'][0]; /* @var $doc PhpParser\Comment\Doc */
+            $doc = $comments['comments'][0]; /* @var $doc Doc */
             $docblock = $this->docblockFactory->create($doc->getText());
             return $docblock->getTags();
         }
@@ -166,7 +253,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     /**
      * @todo namespace edge cases
      */
-    public function pStmt_Namespace(\PhpParser\Node\Stmt\Namespace_ $node)
+    public function pStmt_Namespace(Namespace_ $node)
     {
         if ($this->canUseSemicolonNamespaces) {
             return 'package ' . self::asPackage($this->p($node->name)) . "\n" . $this->pStmts($node->stmts, false);
@@ -176,14 +263,14 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         }
     }
     
-    public function pStmt_Throw(\PhpParser\Node\Stmt\Throw_ $node)
+    public function pStmt_Throw(Throw_ $node)
     {
         return 'throw ' . $this->p($node->expr);
     }
 
-    public function p(\PhpParser\Node $node)
+    public function p(Node $node)
     {
-        //var_dump($node);
+        //var_dump(get_class($node));
         return $this->{'p' . $node->getType()}($node);
     }
 
@@ -204,10 +291,10 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     /**
      * Removes "$" from properties.
      * 
-     * @param \PhpParser\Node\Stmt\PropertyProperty $node
+     * @param PropertyProperty $node
      * @return type
      */
-    public function pStmt_PropertyProperty(\PhpParser\Node\Stmt\PropertyProperty $node)
+    public function pStmt_PropertyProperty(PropertyProperty $node)
     {
         return $node->name
             . (null !== $node->default ? ' = ' . $this->p($node->default) : '');
@@ -216,27 +303,27 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     /**
      * Writes methods, special constructor handling.
      * 
-     * @param \PhpParser\Node\Stmt\ClassMethod $node
+     * @param ClassMethod $node
      * @return type
      */
-    public function pStmt_ClassMethod(\PhpParser\Node\Stmt\ClassMethod $node)
+    public function pStmt_ClassMethod(ClassMethod $node)
     {
         return $this->pStmt_FunctionLike($node);
     }
 
-    public function pStmt_Function(\PhpParser\Node\Stmt\Function_ $node)
+    public function pStmt_Function(Function_ $node)
     {
         return $this->pStmt_FunctionLike($node);
     }
 
-    private function pStmt_FunctionLike(\PhpParser\Node\FunctionLike $node)
+    private function pStmt_FunctionLike(FunctionLike $node)
     {
         $tags = $this->getNodeDocBlockTags($node);
         foreach ($tags as $tag) {
 
-            if ($tag instanceof \phpDocumentor\Reflection\DocBlock\Tags\Param) {
+            if ($tag instanceof Param) {
                 foreach ($node->params as $param) {
-                    /* @var $param \PhpParser\Node\Param */
+                    /* @var $param Param2 */
                     if ($param->name == $tag->getVariableName()) {
                         if (!$param->type)
                             $param->type = $this->getType($tag);
@@ -244,7 +331,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
                 }
             }
 
-            if ($tag instanceof \phpDocumentor\Reflection\DocBlock\Tags\Return_) {
+            if ($tag instanceof Return_) {
                 $type = $this->getType($tag);
                 if ($type)
                     $node->returnType = $type;
@@ -258,7 +345,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         }
 
 
-        if ($node instanceof \PhpParser\Node\Stmt\ClassMethod) {
+        if ($node instanceof ClassMethod) {
             $buffer = $this->pModifiers($node->type) . $buffer;
         }
 
@@ -270,10 +357,10 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     /**
      * Removing "$" and by-ref from params.
      * 
-     * @param \PhpParser\Node\Param $node
+     * @param Param2 $node
      * @return type
      */
-    public function pParam(\PhpParser\Node\Param $node)
+    public function pParam(Param2 $node)
     {
         return ($node->type ? $this->pType($node->type) . ' ' : '')
             . ($node->variadic ? '...' : '')
@@ -299,21 +386,21 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         return $this->p($node);
     }
 
-    public function pExpr_Variable(\PhpParser\Node\Expr\Variable $node)
+    public function pExpr_Variable(Variable $node)
     {
-        if ($node->name instanceof \PhpParser\Node\Expr) {
+        if ($node->name instanceof Expr) {
             return '"$' . $this->p($node->name) . '"';
         } else {
             return $node->name;
         }
     }
 
-    public function pExpr_Assign(\PhpParser\Node\Expr\Assign $node)
+    public function pExpr_Assign(Assign $node)
     {
         $buffer = '';
-        if ($node->var instanceof \PhpParser\Node\Expr\Variable) {
+        if ($node->var instanceof Variable) {
             $hasWhitespace = strpos($node->var->name, " ") !== false;
-            $isDefition = $node->var->getAttribute(\Tusk\NodeVisitor\VariableDefinition::MARKER);
+            $isDefition = $node->var->getAttribute(VariableDefinition::MARKER);
             if (!$hasWhitespace && $isDefition)
                 $buffer = 'def ';
         }
@@ -321,25 +408,29 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         return $buffer . parent::pExpr_Assign($node);
     }
 
-    public function pExpr_BinaryOp_Concat(\PhpParser\Node\Expr\BinaryOp\Concat $node)
+    public function pExpr_BinaryOp_Concat(Concat $node)
     {
         return $this->pInfixOp('Expr_BinaryOp_Concat', $node->left, ' + ', $node->right);
     }
 
-    public function pExpr_AssignOp_Concat(\PhpParser\Node\Expr\AssignOp\Concat $node)
+    public function pExpr_AssignOp_Concat(Concat2 $node)
     {
         return $this->pInfixOp('Expr_AssignOp_Concat', $node->var, ' += ', $node->expr);
     }
 
-    public function pExpr_PropertyFetch(\PhpParser\Node\Expr\PropertyFetch $node)
+    public function pExpr_PropertyFetch(PropertyFetch $node)
     {
-        return $this->pDereferenceLhs($node->var) . '.' . $this->pObjectProperty($node->name);
+        $scope = $node->getAttribute(\Tusk\Inspection\Scope::SCOPE);
+        /* @var $scope \Tusk\Inspection\Scope */
+        $obsolete = !$scope->hasVar($node);
+        $buffer = $obsolete ? '' : $this->pDereferenceLhs($node->var) . '.' ;
+        return $buffer . $this->pObjectProperty($node->name);
     }
 
     /**
      * Pretty prints an array of nodes (statements) and indents them optionally.
      *
-     * @param Node[] $nodes  Array of nodes
+     * @param Node2[] $nodes  Array of nodes
      * @param bool   $indent Whether to indent the printed nodes
      *
      * @return string Pretty printed statements
@@ -351,7 +442,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
             $comments = $node->getAttribute('comments', array());
             if ($comments) {
                 $result .= "\n" . $this->pComments($comments);
-                if ($node instanceof Stmt\Nop) {
+                if ($node instanceof Nop) {
                     continue;
                 }
             }
@@ -366,25 +457,27 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         }
     }
 
-    public function pStmt_For(\PhpParser\Node\Stmt\For_ $node)
+    public function pStmt_For(For_ $node)
     {
-        if ($node->init[0] instanceof \PhpParser\Node\Expr\Assign) {
+        if ($node->init[0] instanceof Assign) {
             $node->init[0]->var->name = "int " . $node->init[0]->var->name;
         }
 
         return parent::pStmt_For($node);
     }
 
-    public function pStmt_Foreach(\PhpParser\Node\Stmt\Foreach_ $node)
+    public function pStmt_Foreach(Foreach_ $node)
     {
         $keyHandling = '';
         $valueVar = $this->p($node->valueVar);
         if (null !== $node->keyVar) {
             $valueVar = 'entry';
-            $keyHandling = "\nif (" . $valueVar . " in Map.Entry) {\n"
-                . "def " . $this->p($node->keyVar) ." = entry.key\n" 
-                . "def " . $this->p($node->valueVar) . " = entry.value\n"
-                . "}\n";
+            $keyHandling = "\n" . 
+                "    " . ($node->keyVar->getAttribute(VariableDefinition::MARKER) ? 'def ' : '') 
+                . $this->p($node->keyVar) ." = (" . $valueVar . " in Map.Entry) ? entry.key : " .$this->p($node->expr) . ".indexOf(entry)" 
+                . $this->getTodo("unefficient"). "\n" . 
+                "    " . ($node->keyVar->getAttribute(VariableDefinition::MARKER) ? 'def ' : '') 
+                . $this->p($node->valueVar) ." = (" . $valueVar . " in Map.Entry) ? entry.value : entry\n";
         }
 
         return 'for (' . $valueVar . ' in ' . $this->p($node->expr) . ') {'
@@ -403,16 +496,16 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
 
     /**
      * @todo trait predence parameters require knowledge about trait impls.
-     * @param \PhpParser\Node $parent
+     * @param Node $parent
      * @return void
      */
-    private function replaceTraits(\PhpParser\Node $parent): void
+    private function replaceTraits(Node $parent): void
     {
         $traits = [];
         $adaptations = [];
-        if ($parent instanceof \PhpParser\Node\Stmt\Class_) {
+        if ($parent instanceof Class_) {
             foreach ($parent->stmts as $key => $node) {
-                if ($node instanceof \PhpParser\Node\Stmt\TraitUse) {
+                if ($node instanceof TraitUse) {
 
                     foreach ($node->adaptations as $adapt) {
                         $adaptations[] = $adapt;
@@ -427,7 +520,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
 
             //add implements for each trait
             foreach ($traits as $name) {
-                $parent->implements[] = new \PhpParser\Node\Name\FullyQualified($name);
+                $parent->implements[] = new FullyQualified($name);
             }
 
             //add trait conflict resolution
@@ -443,63 +536,63 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
             }
     }
 
-    private function adaptoToClassMethod(\PhpParser\Node\Stmt\TraitUseAdaptation\Precedence $prec): \PhpParser\Node\Stmt\ClassMethod
+    private function adaptoToClassMethod(Precedence $prec): ClassMethod
     {
-        $func = new \PhpParser\Node\Stmt\ClassMethod($prec->method);
-        $func->stmts[] = new \PhpParser\Node\Expr\FuncCall(
-            new \PhpParser\Node\Name([$prec->trait . ".super." . $prec->method])
+        $func = new ClassMethod($prec->method);
+        $func->stmts[] = new FuncCall(
+            new Name([$prec->trait . ".super." . $prec->method])
         );
         return $func;
     }
 
-    public function pName(\PhpParser\Node\Name $node)
+    public function pName(Name $node)
     {
         return self::asPackage(parent::pName($node));
     }
 
-    public function pName_FullyQualified(\PhpParser\Node\Name\FullyQualified $node): string
+    public function pName_FullyQualified(FullyQualified $node): string
     {
         return self::asPackage(parent::pName_FullyQualified($node));
     }
 
-    public function pExpr_StaticCall(\PhpParser\Node\Expr\StaticCall $node)
+    public function pExpr_StaticCall(StaticCall $node)
     {
         $buffer = '';
-        if ($node->class instanceof \PhpParser\Node\Name && $node->class->parts[0] == 'parent')
+        if ($node->class instanceof Name && $node->class->parts[0] == 'parent')
             $buffer .= 'super.';
-        elseif ($node->class instanceof \PhpParser\Node\Name && $node->class->parts[0] == 'self')
+        elseif ($node->class instanceof Name && $node->class->parts[0] == 'self')
             $buffer .= '';
         else
             $buffer .= $this->pDereferenceLhs($node->class) . '.';
 
         return $buffer
-            . ($node->name instanceof Expr ? ($node->name instanceof Expr\Variable ? $this->p($node->name) : '{' . $this->p($node->name) . '}') : $node->name)
+            . ($node->name instanceof Expr ? ($node->name instanceof Variable ? $this->p($node->name) : '{' . $this->p($node->name) . '}') : $node->name)
             . '(' . $this->pCommaSeparated($node->args) . ')';
     }
 
-    public function pExpr_StaticPropertyFetch(\PhpParser\Node\Expr\StaticPropertyFetch $node)
+    public function pExpr_StaticPropertyFetch(StaticPropertyFetch $node)
     {
-        if ($node->class instanceof \PhpParser\Node\Name && $node->class->parts[0] == 'self')
+        if ($node->class instanceof Name && $node->class->parts[0] == 'self')
             $buffer = '';
         else
             $buffer = $this->pDereferenceLhs($node->class) . '.';
         return $buffer . $this->pObjectProperty($node->name);
     }
 
-    public function pExpr_MethodCall(\PhpParser\Node\Expr\MethodCall $node)
+    public function pExpr_MethodCall(MethodCall $node)
     {
         $buffer = ($node->var->name == 'this') ? '' : $this->pDereferenceLhs($node->var) . '.';
         return $buffer . $this->pObjectProperty($node->name)
             . '(' . $this->pCommaSeparated($node->args) . ')';
     }
 
-    public function pStmt_Catch(\PhpParser\Node\Stmt\Catch_ $node)
+    public function pStmt_Catch(Catch_ $node)
     {
         return ' catch (' . $this->pImplode($node->types, '|') . ' ' . $node->var . ') {'
             . $this->pStmts($node->stmts) . "\n" . '}';
     }
 
-    public function pStmt_Use(\PhpParser\Node\Stmt\Use_ $node)
+    public function pStmt_Use(Use_ $node)
     {
         $buffer = '';
         foreach ($node->uses as $use) {
@@ -509,7 +602,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         return $buffer;
     }
     
-    public function pStmt_GroupUse(\PhpParser\Node\Stmt\GroupUse $node)
+    public function pStmt_GroupUse(GroupUse $node)
     {
         $buffer = "";
         foreach ($node->uses as $use) {
@@ -519,7 +612,7 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         return $buffer;
     }
     
-    public function pStmt_UseUse(\PhpParser\Node\Stmt\UseUse $node)
+    public function pStmt_UseUse(UseUse $node)
     {
         return $this->import($node->type, $node->name, ($node->name->getLast() !== $node->alias ? ' as ' .$node->alias : null));
     }
@@ -532,13 +625,13 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     /**
      * @todo println is not echo!
      */
-    public function pStmt_Echo(\PhpParser\Node\Stmt\Echo_ $node)
+    public function pStmt_Echo(Echo_ $node)
     {
         return 'println ' . $this->pImplode($node->exprs, ' + ');
         ;
     }
 
-    public function pExpr_ClassConstFetch(\PhpParser\Node\Expr\ClassConstFetch $node)
+    public function pExpr_ClassConstFetch(ClassConstFetch $node)
     {
         $class = $node->class == 'self' ? '' : $this->p($node->class) . '.';
         return  $class . $node->name;
@@ -547,53 +640,56 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     /**
      * @todo use "is" if object comparison is wanted
      */
-    public function pExpr_BinaryOp_Identical(\PhpParser\Node\Expr\BinaryOp\Identical $node)
+    public function pExpr_BinaryOp_Identical(Identical $node)
     {
         return $this->pInfixOp('Expr_BinaryOp_Identical', $node->left, ' == ', $node->right);
     }
 
-    public function pExpr_BinaryOp_NotIdentical(\PhpParser\Node\Expr\BinaryOp\NotIdentical $node)
+    public function pExpr_BinaryOp_NotIdentical(NotIdentical $node)
     {
         return $this->pInfixOp('Expr_BinaryOp_NotIdentical', $node->left, ' != ', $node->right);
     }
 
-    public function pExpr_BinaryOp_Coalesce(\PhpParser\Node\Expr\BinaryOp\Coalesce $node)
+    public function pExpr_BinaryOp_Coalesce(Coalesce $node)
     {
         return $this->pInfixOp('Expr_BinaryOp_Coalesce', $node->left, ' ?: ', $node->right);
     }
 
-    public function pExpr_BinaryOp_LogicalAnd(\PhpParser\Node\Expr\BinaryOp\LogicalAnd $node)
+    public function pExpr_BinaryOp_LogicalAnd(LogicalAnd $node)
     {
         return $this->pInfixOp('Expr_BinaryOp_LogicalAnd', $node->left, ' && ', $node->right);
     }
 
-    public function pExpr_BinaryOp_LogicalOr(\PhpParser\Node\Expr\BinaryOp\LogicalOr $node)
+    public function pExpr_BinaryOp_LogicalOr(LogicalOr $node)
     {
         return $this->pInfixOp('Expr_BinaryOp_LogicalOr', $node->left, ' || ', $node->right);
     }
 
-    public function pExpr_BinaryOp_LogicalXor(\PhpParser\Node\Expr\BinaryOp\LogicalXor $node)
+    public function pExpr_BinaryOp_LogicalXor(LogicalXor $node)
     {
         return $this->pInfixOp('Expr_BinaryOp_LogicalXor', $node->left, ' ^ ', $node->right);
     }
 
-    public function pExpr_Array(\PhpParser\Node\Expr\Array_ $node)
+    public function pExpr_Array(Array_2 $node)
     {
         return '[' . $this->pCommaSeparated($node->items) . ']';
     }
 
-    public function pExpr_ArrayItem(\PhpParser\Node\Expr\ArrayItem $node)
+    public function pExpr_ArrayItem(ArrayItem $node)
     {
 
         $key = null;
         if (null !== $node->key) {
-            if ($node->key instanceof \PhpParser\Node\Expr\ClassConstFetch) {
+            if ($node->key instanceof ClassConstFetch) {
                 $key = '(' . $this->pExpr_ClassConstFetch($node->key) . ')';
-            } elseif ($node->key instanceof \PhpParser\Node\Expr\Variable) {
+            } elseif ($node->key instanceof Variable) {
                 $key = '(' . $node->key->name . ')';
-            } elseif ($node->key instanceof \PhpParser\Node\Scalar\String_) {
+            } elseif ($node->key instanceof String_) {
                 $key = $node->key->value;
-            } elseif ($node->key instanceof \PhpParser\Node\Expr\FuncCall || $node->key instanceof \PhpParser\Node\Expr\MethodCall
+            } elseif (
+                $node->key instanceof FuncCall 
+                || $node->key instanceof MethodCall 
+                || $node->key instanceof Expr\BinaryOp\Plus
             ) {
                 $key = '(' . $this->p($node->key) . ')';
             } else {
@@ -605,31 +701,31 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         return $key . $this->p($node->value);
     }
 
-    public function pExpr_Yield(\PhpParser\Node\Expr\Yield_ $node)
+    public function pExpr_Yield(Yield_ $node)
     {
         return $this->getException(parent::pExpr_Yield($node) . ' is not supported');
     }
 
-    public function pExpr_Exit(\PhpParser\Node\Expr\Exit_ $node)
+    public function pExpr_Exit(Exit_ $node)
     {
-        $kind = $node->getAttribute('kind', \PhpParser\Node\Expr\Exit_::KIND_DIE);
-        if ($kind === \PhpParser\Node\Expr\Exit_::KIND_EXIT)
+        $kind = $node->getAttribute('kind', Exit_::KIND_DIE);
+        if ($kind === Exit_::KIND_EXIT)
             return "System.exit(" . (null !== $node->expr ? $this->p($node->expr) : '') . ")";
 
         return "throw new GroovyException(" . (null !== $node->expr ? $this->p($node->expr) : "'die'") . ")";
     }
 
-    public function pExpr_Cast_Array(\PhpParser\Node\Expr\Cast\Array_ $node)
+    public function pExpr_Cast_Array(Array_ $node)
     {
         return $this->pPostfixOp('Expr_Cast_Array', $node->expr, ' as Object[]');
     }
 
-    public function pExpr_Cast_Unset(\PhpParser\Node\Expr\Cast\Unset_ $node)
+    public function pExpr_Cast_Unset(Unset_2 $node)
     {
         return "null";
     }
 
-    public function pStmt_Unset(\PhpParser\Node\Stmt\Unset_ $node)
+    public function pStmt_Unset(Unset_ $node)
     {
         $buffer = '';
         foreach ($node->vars as $expr) {
@@ -639,13 +735,13 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         return $buffer;
     }
 
-    public function pScalar_String(\PhpParser\Node\Scalar\String_ $node)
+    public function pScalar_String(String_ $node)
     {
         $isMultiline = $node->getAttribute("startLine") < $node->getAttribute('endLine');
-        $kind = $node->getAttribute('kind', \PhpParser\Node\Scalar\String_::KIND_SINGLE_QUOTED);
+        $kind = $node->getAttribute('kind', String_::KIND_SINGLE_QUOTED);
         switch ($kind) {
-            case \PhpParser\Node\Scalar\String_::KIND_NOWDOC:
-            case \PhpParser\Node\Scalar\String_::KIND_HEREDOC:
+            case String_::KIND_NOWDOC:
+            case String_::KIND_HEREDOC:
                 $label = $node->getAttribute('docLabel');
                 if ($label && !$this->containsEndLabel($node->value, $label)) {
                     if ($node->value === '') {
@@ -655,22 +751,22 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
                     return $this->pNoIndent('"""' . PHP_EOL . $node->value . PHP_EOL . '"""');
                 }
             /* break missing intentionally */
-            case \PhpParser\Node\Scalar\String_::KIND_SINGLE_QUOTED:
+            case String_::KIND_SINGLE_QUOTED:
                 $escaped = $this->pNoIndent(addcslashes($node->value, '\'\\'));
                 if (substr($escaped, -1) == '"')
                     $escaped .= ' '; //adding a whitespace if last char is "
                 return $isMultiline ? '"""' . $escaped . '"""' : '\'' . $escaped. '\'';
 
-            case \PhpParser\Node\Scalar\String_::KIND_DOUBLE_QUOTED:
+            case String_::KIND_DOUBLE_QUOTED:
                 $escaped = $this->escapeString($node->value, '"');
                 if (substr($escaped, -1) == '"')
                     $escaped .= ' '; //adding a whitespace if last char is "
                 return $isMultiline ? '"""' . $escaped . '"""' : '"' . $escaped . '"';
         }
-        throw new \Exception('Invalid string kind');
+        throw new Exception('Invalid string kind');
     }
 
-    public function pExpr_Closure(\PhpParser\Node\Expr\Closure $node)
+    public function pExpr_Closure(Closure $node)
     {
         if ($node->static)
             return $this->getException("Static closure is not supported.");
@@ -681,37 +777,37 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
             . $this->pStmts($node->stmts) . "\n" . '}';
     }
 
-    public function pStmt_Return(\PhpParser\Node\Stmt\Return_ $node)
+    public function pStmt_Return(Return_2 $node)
     {
         return 'return' . (null !== $node->expr ? ' ' . $this->p($node->expr) : '');
     }
 
-    public function pScalar_MagicConst_Class(\PhpParser\Node\Scalar\MagicConst\Class_ $node)
+    public function pScalar_MagicConst_Class(Class_2 $node)
     {
         return $this->getTodo('__CLASS__ was used') . " this.getClass().getName()";
     }
 
-    public function pScalar_MagicConst_Dir(\PhpParser\Node\Scalar\MagicConst\Dir $node)
+    public function pScalar_MagicConst_Dir(Dir $node)
     {
         return $this->getTodo('__DIR__ was used') . " getClass().getProtectionDomain().getCodeSource().getLocation().getPath()";
     }
 
-    public function pScalar_MagicConst_Line(\PhpParser\Node\Scalar\MagicConst\Line $node)
+    public function pScalar_MagicConst_Line(Line $node)
     {
         return $this->getTodo('__LINE__ was used') . " 1";
     }
 
-    public function pScalar_MagicConst_Method(\PhpParser\Node\Scalar\MagicConst\Method $node)
+    public function pScalar_MagicConst_Method(Method $node)
     {
         return $this->getTodo('__METHOD__ was used') . " 'METHOD'";
     }
 
-    public function pScalar_MagicConst_Function(\PhpParser\Node\Scalar\MagicConst\Function_ $node)
+    public function pScalar_MagicConst_Function(Function_2 $node)
     {
         return $this->getTodo('__FUNCTION__ was used') . " 'FUNCTION'";
     }
 
-    public function pScalar_MagicConst_File(\PhpParser\Node\Scalar\MagicConst\File $node)
+    public function pScalar_MagicConst_File(File $node)
     {
         return $this->getTodo('__FILE__ was used') . " getClass().getProtectionDomain().getCodeSource().getLocation().getPath()";
     }
@@ -719,44 +815,44 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
     /**
      * Empty transpiles to "!" unless the previous symbol is "!"
      * 
-     * @param \PhpParser\Node\Expr\Empty_ $node
+     * @param Empty_ $node
      * @return string
      */
-    public function pExpr_Empty(\PhpParser\Node\Expr\Empty_ $node)
+    public function pExpr_Empty(Empty_ $node)
     {
-        $parent = $node->getAttribute(\Tusk\NodeVisitor\TreeRelation::PARENT);
-        $buffer = ($parent instanceof \PhpParser\Node\Expr\BooleanNot) ? '' : '!';
+        $parent = $node->getAttribute(TreeRelation::PARENT);
+        $buffer = ($parent instanceof BooleanNot) ? '' : '!';
         return $buffer . $this->p($node->expr);
     }
     
-    public function pExpr_BooleanNot(\PhpParser\Node\Expr\BooleanNot $node)
+    public function pExpr_BooleanNot(BooleanNot $node)
     {
         $buffer = '!';
-        if ($node->expr instanceof \PhpParser\Node\Expr\Empty_)
+        if ($node->expr instanceof Empty_)
             $buffer = '';
         
         return $this->pPrefixOp('Expr_BooleanNot', $buffer, $node->expr);
     }
 
-    public function pExpr_Eval(\PhpParser\Node\Expr\Eval_ $node)
+    public function pExpr_Eval(Eval_ $node)
     {
         return $this->getTodo('better find a different solution than eval') . ' evaluate(' . $this->p($node->expr) . ')';
     }
 
-    public function pStmt_Goto(\PhpParser\Node\Stmt\Goto_ $node)
+    public function pStmt_Goto(Goto_ $node)
     {
         return $this->getTodo("goto is not supported.") . ' ' .$this->getException("goto is not supported.");
     }
 
-    public function pStmt_Global(\PhpParser\Node\Stmt\Global_ $node)
+    public function pStmt_Global(Global_ $node)
     {
         return  $this->getTodo("global is not supported.") . ' ' .
             $this->getException("global is not supported, maybe try public static class members.");
     }
 
-    public function pStmt_If(\PhpParser\Node\Stmt\If_ $node)
+    public function pStmt_If(If_ $node)
     {
-        if ($node->cond instanceof \PhpParser\Node\Expr\Assign) {
+        if ($node->cond instanceof Assign) {
             $cond = '(' . $this->p($node->cond) . ')';
         } else {
             $cond = $this->p($node->cond);
@@ -768,35 +864,78 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
              . (null !== $node->else ? $this->p($node->else) : '');
     }
     
-    public function pStmt_ElseIf(\PhpParser\Node\Stmt\ElseIf_ $node)
+    public function pStmt_ElseIf(ElseIf_ $node)
     {
         return ' else if (' . $this->p($node->cond) . ') {'
             . $this->pStmts($node->stmts) . "\n" . '}';
     }
     
-    public function pExpr_List(\PhpParser\Node\Expr\List_ $node)
+    public function pExpr_List(List_ $node)
     {
         return $this->getTodo("list is not fully supported, check args") . ' def(' . $this->pCommaSeparated($node->items) . ')';
+    }
+    
+    public function pExpr_Cast_Bool(Bool_ $node)
+    {
+        return $this->getTodo('Check casting precedence') 
+            . ' (' . parent::pExpr_Cast_Bool($node).')';
+    }
+    
+    public function pExpr_Cast_Int(Int_ $node)
+    {
+        return $this->getTodo('Check casting precedence') 
+            . ' (' . parent::pExpr_Cast_Int($node).')';
+    }
+    
+    public function pExpr_Cast_String(String_2 $node)
+    {
+        return $this->getTodo('Check casting precedence') 
+            . ' (' . parent::pExpr_Cast_String($node).')';
+    }
+    
+    public function pExpr_Cast_Double(Double $node)
+    {
+        return $this->getTodo('Check casting precedence') 
+            . ' (' . parent::pExpr_Cast_Double($node).')';
+    }
+    
+    public function pExpr_Isset(Isset_ $node)
+    {
+        if ($node->getAttribute(TreeRelation::PARENT) instanceof If_)
+            return $this->pImplode($node->vars, ' && ');
+        
+        $buffer = [];
+        foreach ($node->vars as $var) {
+            if ($var instanceof Expr)
+                $buffer[] = '(' . $this->p($var) . ')?true:false';
+            else
+                $buffer[] = $var . '?true:false';
+        }
+        return implode(' && ',$buffer);
     }
 
     private function pUseType($type)
     {
-        return $type === \PhpParser\Node\Stmt\Use_::TYPE_FUNCTION ? 'static ' :  '';
+        return $type === Use_::TYPE_FUNCTION ? 'static ' :  '';
     }
 
     protected function pObjectProperty($node)
     {
-        if ($node instanceof \PhpParser\Node\Expr) {
+        if ($node instanceof Expr) {
             return '"$' . $this->p($node) . '"';
         } else {
             return $node;
         }
     }
     
-    private function getState() : \Tusk\State
+    protected function pModifiers($modifiers) {
+        return str_replace("public ", '', parent::pModifiers($modifiers));
+    }
+    
+    private function getState() : State
     {
         if (!isset($this->options['state']))
-            throw new \RuntimeException('No state option present.');
+            throw new RuntimeException('No state option present.');
         
         return $this->options['state'];
     }
@@ -811,9 +950,9 @@ class Groovy extends \PhpParser\PrettyPrinter\Standard
         return '/* TODO ' . $todo . ' */';
     }
 
-    private function throwError(\PhpParser\Node $node)
+    private function throwError(Node $node)
     {
-        throw new \PhpParser\Error("ArrayItem conversion error on " . serialize($node) . "in " . $this->getState()->getFilename(), $node->getAttributes());
+        throw new Error("ArrayItem conversion error on " . serialize($node) . "in " . $this->getState()->getFilename(), $node->getAttributes());
     }
 
 }

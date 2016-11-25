@@ -20,8 +20,8 @@ the nodes in Groovy syntax.
 
 ## Errors / TODO
 
-* redefined variables not possible (first int then def)
-* !empty is transpiled into !!, knownledge about parent/previous sibling is required
+* casting precedence of objects (non-scalar) not regarded yet
 * use eachwithindex if loop does not contain: break, continue, return
 * prevent useless casting: if ((int) id > 0) where id is already int
 * simplyfy boolean comparison: "false==" or "true=="
+* "break 2" shows TODO that break-with-labels must be used

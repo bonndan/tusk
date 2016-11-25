@@ -3,52 +3,68 @@
 namespace Tusk\NodeVisitor;
 
 /**
- * Finds variable definitions in functionlike nodes and marks them.
+ * Finds variable definitions in scopes nodes and marks them.
  * 
  * 
  */
 class VariableDefinition extends \PhpParser\NodeVisitorAbstract
 {
+
     const MARKER = 'isDefinition';
+
+    /**
+     * @var \Tusk\Inspection\Scope
+     */
+    private $scopes;
     
-    private $vars;
+    public function __construct()
+    {
+        $this->scopes[] = new \Tusk\Inspection\Scope(null);
+    }
 
     public function enterNode(\PhpParser\Node $node)
     {
-        if (!$node instanceof \PhpParser\Node\FunctionLike)
+        if ($node instanceof \PhpParser\Node\Stmt\Class_) {
+            $this->scopes[] = new \Tusk\Inspection\Scope($node);
             return;
+        }
+        
+        if ($node instanceof \PhpParser\Node\FunctionLike) {
+            $this->scopes[] = new \Tusk\Inspection\Scope($node);
+            $scope = end($this->scopes);
+            foreach ($node->getParams() as $param) {
+                $scope->addVar($param);
+            }
+            return;
+        }
 
-        $this->vars = [];
-        $this->checkParams($node);
-        $this->checkDefs($node);
+        $scope = end($this->scopes);
+        
+        if ($this->isQualified($node)) {
+            if (!$scope->hasVar($node)) {
+                $node->setAttribute(self::MARKER, true);
+                $scope->addVar($node);
+            } else {
+                $scope->registerOn($node);
+            }
+        }
     }
     
-    private function checkParams(\PhpParser\Node\FunctionLike $node)
+    private function isQualified(\PhpParser\Node $node) : bool
     {
-        foreach ($node->getParams() as $param) {
-            $this->vars[$param->name] = $param;
+        $qualifies = $node instanceof \PhpParser\Node\Expr\PropertyFetch ||
+            $node instanceof \PhpParser\Node\Stmt\Property;
+        if (!$qualifies && $node instanceof \PhpParser\Node\Expr\Variable) {
+            $qualifies = $node->getAttribute(TreeRelation::PARENT) != \PhpParser\Node\Expr\PropertyFetch::class;
         }
+        return $qualifies;
     }
 
-    private function checkDefs(\PhpParser\NodeAbstract $node)
+    public function leaveNode(\PhpParser\Node $node)
     {
-        if ($node instanceof \PhpParser\Node\Expr\Assign) {
-            if (!$node->var instanceof \PhpParser\Node\Expr\Variable)
-                return;
-            
-            $name = $node->var->name;
-            if (!isset($this->vars[$name])) {
-                $node->var->setAttribute(self::MARKER, true);
-                $this->vars[$name] = $node->var;
-            }
-
-            return;
-        }
-
-        if (isset($node->stmts))
-            foreach ($node->stmts as $subnode) {
-                $this->checkDefs($subnode);
-            }
+        if ($node instanceof \PhpParser\Node\FunctionLike)
+            array_pop($this->scopes);
     }
 
+    
 }

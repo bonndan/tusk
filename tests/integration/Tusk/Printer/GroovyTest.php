@@ -168,6 +168,46 @@ class GroovyTest extends TestCase
         $this->assertNOtContains(";", $groovy);
     }
     
+    public function testThisOmitted()
+    {
+        $code = "
+class A 
+{
+    public function getA()
+    {
+        if (!\$this->data) {
+            \$this->data = array_flip(\$this->repo->getData());
+        }
+        return \$this->data;
+    }
+}";
+
+        $groovy = $this->parse($code);
+        $this->assertContains("repo.getData()", $groovy);
+        $this->assertContains("repo.getData()", $groovy);
+        $this->assertContains("return data", $groovy);
+        $this->assertNotContains("this.repo", $groovy);
+        $this->assertNOtContains("this", $groovy);
+    }
+    
+    public function testThisIsNotOmitted()
+    {
+        $code = "
+class A 
+{
+    private \$data;
+    public function setData(\$data)
+    {
+        \$this->data = \$data;
+    }
+}";
+
+        $groovy = $this->parse($code);
+        $this->assertContains("this.data = data", $groovy);
+    }
+    
+    
+    
     public function testMethod()
     {
         $code = "class abc {
@@ -237,10 +277,39 @@ foreach ($arr as $key => $value) {
 
         $groovy = $this->parse($code);
         $this->assertContains('for (entry in arr) {', $groovy);
-        $this->assertContains('if (entry in Map.Entry) {', $groovy);
-        $this->assertContains('def key = entry.key', $groovy);
-        $this->assertContains('def value = entry.value', $groovy);
+        $this->assertContains('def key = (entry in Map.Entry) ? entry.key : arr.indexOf(entry)', $groovy);
+        $this->assertContains('def value = (entry in Map.Entry) ? entry.value : entry', $groovy);
         $this->assertNotContains('foreach', $groovy);
+    }
+    
+    public function testForEachLoopWithKeyVarsDefined()
+    {
+        $code = '
+$key = null;
+$value = null;
+$arr = [];
+foreach ($arr as $key => $value) {
+    continue;
+}';
+
+        $groovy = $this->parse($code);
+        $this->assertContains('for (entry in arr) {', $groovy);
+        $this->assertContains('key = (entry in Map.Entry) ? entry.key : arr.indexOf(entry)', $groovy);
+        $this->assertContains('value = (entry in Map.Entry) ? entry.value : entry', $groovy);
+        $this->assertNotContains('def key = entry.key', $groovy);
+        $this->assertNotContains('def value = entry.value', $groovy);
+    }
+    
+    public function testVarAssigned()
+    {
+        $code = "
+class ABC {
+    function a(){
+        \$myArr = [];
+    }
+}"; 
+        $groovy = $this->parse($code);
+        $this->assertContains('def myArr = []', $groovy);
     }
     
     public function testStringConcat()
@@ -417,7 +486,7 @@ class A {
     }
 }";
         $groovy = $this->parse($code);
-        $this->assertContains('public String test(String name, def arguments)', $groovy);
+        $this->assertContains('String test(String name, def arguments)', $groovy);
     }
     
     public function testParamMixedTypeDocComment()
@@ -434,7 +503,7 @@ class A {
     }
 }";
         $groovy = $this->parse($code);
-        $this->assertContains('public String test(def name)', $groovy);
+        $this->assertContains('String test(def name)', $groovy);
     }
     
     public function testParamTypeDocComment2()
@@ -450,7 +519,7 @@ class A {
     }
 }";
         $groovy = $this->parse($code);
-        $this->assertContains('public void test(boolean flag)', $groovy);
+        $this->assertContains('void test(boolean flag)', $groovy);
     }
     
     public function testScalarTypeHintOverridesParam()
@@ -562,7 +631,7 @@ use function B\hello;
         $this->assertNotContains('use function', $groovy);
     }
     
-    public function testUseAslias()
+    public function testUseAlias()
     {
         $code = "
 use B\Hello as ABC;
@@ -1113,9 +1182,9 @@ class B {
 }
 ";
         $groovy = $this->parse($code);
-        $this->assertContains("public def a()", $groovy);
-        $this->assertContains("public def b()", $groovy);
-        $this->assertContains("public static def c()", $groovy);
+        $this->assertContains("def a()", $groovy);
+        $this->assertContains("def b()", $groovy);
+        $this->assertContains("static def c()", $groovy);
         $this->assertNotContains("protected", $groovy);
         $this->assertNotContains("private", $groovy);
     }
@@ -1127,7 +1196,7 @@ if(\$a = trim(\$b))
     echo \$a;
 ";
         $groovy = $this->parse($code);
-        $this->assertContains("if ((a = trim(b)))", $groovy);
+        $this->assertContains("if ((def a = trim(b)))", $groovy);
         $this->assertNotContains("if (a = trim(b))", $groovy);
     }
     
@@ -1208,6 +1277,96 @@ class A {
         $this->assertContains("def a = getB()", $groovy);
         $this->assertContains("a = 0", $groovy);
         $this->assertNotContains("def a = 0", $groovy);
+    }
+    
+    public function testCastingPrecedenceBool()
+    {
+        $code = "
+\$a = (bool) \$b == true;
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("((bool) b)", $groovy);
+        $this->assertNotContains("b == true", $groovy);
+    }
+    
+    public function testCastingPrecedenceDouble()
+    {
+        $code = "
+\$a = (double) \$b > 0;
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("((double) b)", $groovy);
+        $this->assertNotContains("b > 0", $groovy);
+    }
+    
+    public function testCastingPrecedenceInt()
+    {
+        $code = "
+\$a = (int) \$b > 0;
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("((int) b)", $groovy);
+        $this->assertNotContains("b > 0", $groovy);
+    }
+    
+    public function testCastingPrecedenceString()
+    {
+        $code = "
+\$a = (string) \$b == 'x';
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("((string) b)", $groovy);
+        $this->assertNotContains("b == x", $groovy);
+    }
+    
+    public function testIssetToCoalesceOnAssigment()
+    {
+        $code = "
+\$a = isset(\$b);
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("a = (b)?true:false", $groovy);
+        $this->assertNotContains("a == isset(b)", $groovy);
+    }
+    
+    public function testIssetRemovedInIf()
+    {
+        $code = "
+if(isset(\$a))print(1);
+if(isset(\$a, \$b))print(1);
+if(\$a && isset(\$b)) print(1);
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("if (a)", $groovy);
+        $this->assertContains("if (a && b)", $groovy);
+        $this->assertContains("if (a && b)", $groovy);
+    }
+    
+    public function testReturnTypeMixedToDef()
+    {
+        $code = "
+class A {
+    /**
+     * @return mixed
+     */
+    public function a()
+    {
+        return \$this->b;
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("def a", $groovy);
+        $this->assertNotContains("public mixed a", $groovy);
+    }
+    
+    public function testDynamicArrayKey()
+    {
+        $code = "
+\$a = [\$b + 'something' => 'foobar'];
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("a = [(b + 'something'): 'foobar']", $groovy);
     }
     
     /**
