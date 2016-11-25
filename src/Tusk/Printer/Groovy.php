@@ -684,16 +684,10 @@ class Groovy extends Standard
                 $key = '(' . $this->pExpr_ClassConstFetch($node->key) . ')';
             } elseif ($node->key instanceof Variable) {
                 $key = '(' . $node->key->name . ')';
-            } elseif ($node->key instanceof String_) {
+            } elseif ($node->key instanceof String_ || $node->key instanceof LNumber) {
                 $key = $node->key->value;
-            } elseif (
-                $node->key instanceof FuncCall 
-                || $node->key instanceof MethodCall 
-                || $node->key instanceof Expr\BinaryOp\Plus
-            ) {
-                $key = '(' . $this->p($node->key) . ')';
             } else {
-                $key = $this->p($node->key);
+                $key = '(' . $this->p($node->key) . ')';
             }
         }
 
