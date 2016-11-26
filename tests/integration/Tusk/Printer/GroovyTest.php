@@ -267,6 +267,107 @@ foreach ($arr as $value) {
         $this->assertNotContains('for ($i=0;$i<10;$i++)', $groovy);
     }
     
+    public function testForEachLoopNested()
+    {
+        $code = '
+class A
+{
+    function a()
+    {
+        $arr = [];
+        foreach ($arr as $key => $value) {
+            foreach ($value as $x => $y) {
+                echo $x;
+            }
+        }
+    
+    }
+}
+';
+
+        $groovy = $this->parse($code);
+        $this->assertContains('entry_', $groovy);
+    }
+    
+    public function testForEachLoopNestedBreak2()
+    {
+        $code = '
+foreach ($arr as $value) {
+    foreach ($value as $x) {
+        break 2;
+    }
+}
+';
+
+        $groovy = $this->parse($code);
+        $this->assertContains('loop1:', $groovy);
+        $this->assertContains('loop2:', $groovy);
+        $this->assertContains('break loop1', $groovy);
+    }
+    
+    public function testForEachLoopNestedContinue2()
+    {
+        $code = '
+foreach ($arr as $value) {
+    foreach ($value as $x) {
+        continue 2;
+    }
+}
+';
+
+        $groovy = $this->parse($code);
+        $this->assertContains('loop1:', $groovy);
+        $this->assertContains('loop2:', $groovy);
+        $this->assertContains('continue loop1', $groovy);
+    }
+    
+    public function testForLoopNestedContinue2()
+    {
+        $code = '
+for ($a =1; $a < 2; $a++) {
+    foreach ($value as $x) {
+        continue 2;
+    }
+}
+';
+
+        $groovy = $this->parse($code);
+        $this->assertContains('loop1:', $groovy);
+        $this->assertContains('loop2:', $groovy);
+        $this->assertContains('continue loop1', $groovy);
+    }
+    
+    public function testWhileLoopNestedContinue2()
+    {
+        $code = '
+while ($a) {
+    foreach ($value as $x) {
+        continue 2;
+    }
+}
+';
+
+        $groovy = $this->parse($code);
+        $this->assertContains('loop1:', $groovy);
+        $this->assertContains('loop2:', $groovy);
+        $this->assertContains('continue loop1', $groovy);
+    }
+    
+    public function testForEachLoopNestedUnlabeled()
+    {
+        $code = '
+foreach ($arr as $value) {
+    foreach ($value as $x) {
+        $x++;
+    }
+}
+';
+
+        $groovy = $this->parse($code);
+        $this->assertNotContains('loop1:', $groovy);
+        $this->assertNotContains('loop2:', $groovy);
+    }
+    
     public function testForEachLoopWithKey()
     {
         $code = '

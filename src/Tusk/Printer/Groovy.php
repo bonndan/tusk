@@ -463,7 +463,7 @@ class Groovy extends Standard
             $node->init[0]->var->name = "int " . $node->init[0]->var->name;
         }
 
-        return parent::pStmt_For($node);
+        return $this->getLoopLabel($node) . parent::pStmt_For($node);
     }
 
     public function pStmt_Foreach(Foreach_ $node)
@@ -472,6 +472,11 @@ class Groovy extends Standard
         $valueVar = $this->p($node->valueVar);
         if (null !== $node->keyVar) {
             $valueVar = 'entry';
+            $scope = $this->getNodeScope($node->keyVar);
+            while ($scope->hasVar($valueVar)) {
+                $valueVar .= '_';
+            }
+            $scope->addVar(new Variable($valueVar)); //registering dummy var
             $keyHandling = "\n" . 
                 "    " . ($node->keyVar->getAttribute(VariableDefinition::MARKER) ? 'def ' : '') 
                 . $this->p($node->keyVar) ." = (" . $valueVar . " in Map.Entry) ? entry.key : " .$this->p($node->expr) . ".indexOf(entry)" 
@@ -480,9 +485,22 @@ class Groovy extends Standard
                 . $this->p($node->valueVar) ." = (" . $valueVar . " in Map.Entry) ? entry.value : entry\n";
         }
 
-        return 'for (' . $valueVar . ' in ' . $this->p($node->expr) . ') {'
+        return $this->getLoopLabel($node) . 'for (' . $valueVar . ' in ' . $this->p($node->expr) . ') {'
             . $keyHandling 
             . $this->pStmts($node->stmts) . "\n" . '}';
+    }
+    
+    public function pStmt_While(Stmt\While_ $node)
+    {
+        return $this->getLoopLabel($node) . ' ' . parent::pStmt_While($node);
+    }
+    
+    private function getLoopLabel(Node $node) : string
+    {
+        if (!$node->getAttribute(\Tusk\NodeVisitor\NestedLoop::LEVEL_BREAKS))
+            return '';
+        
+        return \Tusk\NodeVisitor\NestedLoop::LABEL_PREFIX . $node->getAttribute(\Tusk\NodeVisitor\NestedLoop::DEPTH) . ': ' . PHP_EOL;
     }
 
     protected function preprocessNodes(array $nodes)
@@ -864,6 +882,18 @@ class Groovy extends Standard
             . $this->pStmts($node->stmts) . "\n" . '}';
     }
     
+    public function pStmt_Break(Stmt\Break_ $node)
+    {
+        $targetLoop = $node->getAttribute(\Tusk\NodeVisitor\NestedLoop::TARGET_LOOP);
+        return 'break' . ($targetLoop ? ' ' . $targetLoop : '');
+    }
+    
+    public function pStmt_Continue(Stmt\Continue_ $node)
+    {
+        $targetLoop = $node->getAttribute(\Tusk\NodeVisitor\NestedLoop::TARGET_LOOP);
+        return 'continue' . ($targetLoop ? ' ' . $targetLoop : '');
+    }
+    
     public function pExpr_List(List_ $node)
     {
         return $this->getTodo("list is not fully supported, check args") . ' def(' . $this->pCommaSeparated($node->items) . ')';
@@ -949,4 +979,14 @@ class Groovy extends Standard
         throw new Error("ArrayItem conversion error on " . serialize($node) . "in " . $this->getState()->getFilename(), $node->getAttributes());
     }
 
+    /**
+     * Return the associated scope.
+     * 
+     * @param Node $node
+     * @return \Tusk\Inspection\Scope|null
+     */
+    private function getNodeScope(Node $node)
+    {
+        return $node->getAttribute(\Tusk\Inspection\Scope::SCOPE);
+    }
 }

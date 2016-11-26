@@ -51,8 +51,21 @@ class Scope
         $node->setAttribute(self::SCOPE, $this);
     }
 
-    public function hasVar(\PhpParser\Node $node)
+    /**
+     * Checks if a variable is present in the scope.
+     * 
+     * If a string is given, is is checked without modifications. If a node is
+     * given it can be a property and then both local and global names are checked.
+     * 
+     * @param Node|string $node
+     * @return bool
+     */
+    public function hasVar($node) : bool
     {
+        if (is_string($node)) {
+            return array_key_exists($node, $this->vars);
+        }
+        
         $name = $this->getFQN($node);
         if (empty($name)) {
             

@@ -123,6 +123,7 @@ class Tusk
         $traverser->addVisitor(new NodeVisitor\PublicTraitMethods());
         $traverser->addVisitor(new NodeVisitor\ReservedWords());
         $traverser->addVisitor(new NodeVisitor\VariableDefinition());
+        $traverser->addVisitor(new NodeVisitor\NestedLoop());
         return $traverser->traverse($stmts);
     }
 
