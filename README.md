@@ -1,5 +1,8 @@
 # Tusk
 
+[![Build Status](https://travis-ci.org/bonndan/tusk.svg?branch=master)](https://travis-ci.org/bonndan/tusk)
+[![Dependency Status](https://gemnasium.com/badges/github.com/bonndan/tusk.svg)](https://gemnasium.com/github.com/bonndan/tusk)
+
 Tusk is an experimental transpiler to convert PHP sources into http://groovy-lang.org/. 
 In order to accomplish this it creates an AST using https://github.com/nikic/PHP-Parser and then attempts to write
 the nodes in Groovy syntax.
