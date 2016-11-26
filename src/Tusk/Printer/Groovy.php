@@ -517,7 +517,7 @@ class Groovy extends Standard
      * @param Node $parent
      * @return void
      */
-    private function replaceTraits(Node $parent): void
+    private function replaceTraits(Node $parent)
     {
         $traits = [];
         $adaptations = [];
