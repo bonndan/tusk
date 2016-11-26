@@ -12,9 +12,15 @@ the nodes in Groovy syntax.
 
 Tusk is meant as support tool to port PHP projects to Groovy/Java with low efforts. It does not
 aim at full-auto magic conversion, but aims to create mostly error-free Groovy sources
-enriched with hints.
+enriched with hints. Then with a decent IDE missing things can be quickly resolved.
 
 ## Features
+
+PHP source:
+![screenshot](https://github.com/bonndan/tust/raw/master/docs/user_php.png "PHP source")
+
+Groovy outuput
+![screenshot](https://github.com/bonndan/tust/raw/master/docs/user_groovy.png "Groovy source")
 
 * converts php expressions into valid Groovy
 * handles incompatibilites as far as possible (e.g. "break 2")
