@@ -17,10 +17,10 @@ enriched with hints. Then with a decent IDE missing things can be quickly resolv
 ## Features
 
 PHP source:
-![screenshot](https://github.com/bonndan/tust/raw/master/docs/user_php.png "PHP source")
+![screenshot](https://github.com/bonndan/tusk/raw/master/docs/user_php.png "PHP source")
 
 Groovy outuput
-![screenshot](https://github.com/bonndan/tust/raw/master/docs/user_groovy.png "Groovy source")
+![screenshot](https://github.com/bonndan/tusk/raw/master/docs/user_groovy.png "Groovy source")
 
 * converts php expressions into valid Groovy
 * handles incompatibilites as far as possible (e.g. "break 2")
