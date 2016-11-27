@@ -7,7 +7,7 @@ namespace Tusk\NodeVisitor;
  * 
  * E.g. InvalidArgumentException into IllegalArgumentException
  */
-class BuiltInException extends StatefulVisitor
+class BuiltInException extends StatefulVisitor implements InfluencingVisitor
 {
 
     private static $conversion = [

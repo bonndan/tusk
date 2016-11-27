@@ -5,7 +5,7 @@ namespace Tusk\NodeVisitor;
  * Turns __call into methodMissing.
  *
  */
-class MagicCall extends \PhpParser\NodeVisitorAbstract
+class MagicCall extends \PhpParser\NodeVisitorAbstract implements InfluencingVisitor
 {
     public function enterNode(\PhpParser\Node $node)
     {

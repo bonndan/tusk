@@ -4,8 +4,9 @@ namespace Tusk\NodeVisitor;
 /**
  * Turns __destruct into close.
  *
+ * 
  */
-class Destruct extends \PhpParser\NodeVisitorAbstract
+class Destruct extends \PhpParser\NodeVisitorAbstract implements InfluencingVisitor
 {
     public function enterNode(\PhpParser\Node $node)
     {

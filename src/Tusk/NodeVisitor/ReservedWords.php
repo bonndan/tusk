@@ -9,7 +9,7 @@ namespace Tusk\NodeVisitor;
  * 
  * @todo might need more replacements
  */
-class ReservedWords extends \PhpParser\NodeVisitorAbstract
+class ReservedWords extends \PhpParser\NodeVisitorAbstract implements InfluencingVisitor
 {
 
     public static $reservedWords = [

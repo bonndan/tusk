@@ -13,7 +13,7 @@ use PhpParser\NodeVisitorAbstract;
  * 
  * 
  */
-class PublicTraitMethods extends NodeVisitorAbstract
+class PublicTraitMethods extends NodeVisitorAbstract implements InfluencingVisitor
 {
 
     public function enterNode(Node $node)
