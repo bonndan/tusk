@@ -41,4 +41,7 @@ Groovy outuput
 * casting precedence of objects (non-scalar) not regarded yet
 * use eachwithindex if loop does not contain: break, continue, return
 * prevent useless casting: if ((int) id > 0) where id is already int
-* simplyfy boolean comparison: "false==" or "true=="
+* simplify boolean comparison: "false==" or "true=="
+* add possibility for automatic custom imports
+* add possibility for on demand imports of non-resolvable classes
+* add replacement templates for code like $_POST access
