@@ -40,11 +40,7 @@ class TreeRelation extends StatefulVisitor
             $this->previous->setAttribute(self::NEXT, $node);
             
         }
-        /*var_dump(
-            get_class($node),
-            get_class($node->getAttribute(self::PARENT)),
-            get_class($node->getAttribute(self::PREVIOUS)),
-            '---');*/
+        
         $this->stack[] = $node;
     }
 
