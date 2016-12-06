@@ -1515,6 +1515,15 @@ class A {
         $this->assertContains('a = URLDecoder.decode(request.getQueryString(), "UTF-8")[\'x\']', $groovy);
     }
     
+    public function testServerHttps()
+    {
+        $code = "
+\$a = \$_SERVER['HTTPS'];
+";
+        $groovy = $this->parse($code);
+        $this->assertContains('a = request.getScheme() == "https" ? "on" : ""', $groovy);
+    }
+    
     /**
      * @param string $code without leading <?php 
      * @return string

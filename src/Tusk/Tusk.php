@@ -142,6 +142,7 @@ class Tusk
         $traverser->addVisitor(new NodeVisitor\VariableDefinition());
         $traverser->addVisitor(new NodeVisitor\NestedLoop());
         $traverser->addVisitor(new NodeVisitor\GlobalsExchanger());
+        $traverser->addVisitor(new NodeVisitor\ServerVars());
         return $traverser->traverse($stmts);
     }
 
