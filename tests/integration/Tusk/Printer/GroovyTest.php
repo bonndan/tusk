@@ -1470,6 +1470,51 @@ class A {
         $this->assertContains("a = [(b + 'something'): 'foobar']", $groovy);
     }
     
+    public function testGlobalPostAccess()
+    {
+        $code = "
+\$a = \$_POST['a'];
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("a = request.getParameterMap()['a']", $groovy);
+    }
+    
+    public function testGlobalServerRemoteAddr()
+    {
+        $code = "
+\$a = \$_SERVER['REMOTE_ADDR'];
+";
+        $groovy = $this->parse($code);
+        $this->assertContains('a = request.getHeader("Remote_Addr")', $groovy);
+    }
+    
+    public function testGlobalCookies()
+    {
+        $code = "
+\$a = \$_COOKIE['x'];
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("a = request.getCookies()['x']", $groovy);
+    }
+    
+    public function testGlobalEnv()
+    {
+        $code = "
+\$a = \$_ENV['x'];
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("a = System.getenv()['x']", $groovy);
+    }
+    
+    public function testGlobalsGet()
+    {
+        $code = "
+\$a = \$_GET['x'];
+";
+        $groovy = $this->parse($code);
+        $this->assertContains('a = URLDecoder.decode(request.getQueryString(), "UTF-8")[\'x\']', $groovy);
+    }
+    
     /**
      * @param string $code without leading <?php 
      * @return string

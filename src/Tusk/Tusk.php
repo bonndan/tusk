@@ -55,13 +55,15 @@ class Tusk
         if (!$this->config->isConfigured())
             die("Please provide a path or a valid configuration.");
         
-        $this->runDirectory($this->config->namespaceBaseDir);
+        $this->runProject();
     }
 
-    private function runFile(SplFileInfo $file)
+    private function runFile(SplFileInfo $file, string $package = null)
     {
         $code = $file->getContents();
         $state = new State($file->getFilename());
+        $state->setPackage($package);
+        $this->logger->addInfo("Reading $file");
         $groovySrc = $this->toGroovy($this->getStatements($code, $state), $state);
         if ($this->config->isConfigured()) {
             $target = $this->getPathForFile($groovySrc, $file);
@@ -77,17 +79,25 @@ class Tusk
         }
     }
     
+    /**
+     * Removes any artifical parts like ".class.php" and adds .groovy suffix.
+     * 
+     * @param \Tusk\State $tuskFile
+     * @param SplFileInfo $fileInfo
+     * @return string
+     */
     private function getPathForFile(State $tuskFile, SplFileInfo $fileInfo) : string
     {
-        $targetFile = $this->config->packageBaseDir 
+        $cleanFileName = explode('.', $fileInfo->getFilename())[0];
+        $targetFile = $this->config->target 
                 . DIRECTORY_SEPARATOR 
                 . str_replace(".", DIRECTORY_SEPARATOR, $tuskFile->getPackage())
                 . DIRECTORY_SEPARATOR
-                . str_replace(".php", ".groovy", $fileInfo->getFilename());
+                . $cleanFileName . ".groovy";
         return $targetFile;
     }
 
-    private function runDirectory(string $path)
+    private function runDirectory(string $path, string $namespace = null)
     {
         $onlyPHP = function (SplFileInfo2 $file) {
             return strpos((string) $file, ".php");
@@ -97,13 +107,20 @@ class Tusk
         $finder->files()->in($path)->filter($onlyPHP);
 
         foreach ($finder as $file) {
-            $this->runFile($file);
+            $this->runFile($file, $namespace);
+        }
+    }
+    
+    private function runProject()
+    {
+        foreach ($this->config->namespaces as $dir => $ns) {
+            $this->runDirectory($this->config->source . DIRECTORY_SEPARATOR . $dir, $ns);
         }
     }
 
     public function toGroovy(array $statements, \Tusk\State $state) : State
     {
-        $printer = new Printer\Groovy(['state' => $state]);
+        $printer = new Printer\Groovy(['state' => $state, 'logger' => $this->logger]);
         $state->setSrc($printer->prettyPrint($statements));
         return $state;
     }
@@ -124,6 +141,7 @@ class Tusk
         $traverser->addVisitor(new NodeVisitor\ReservedWords());
         $traverser->addVisitor(new NodeVisitor\VariableDefinition());
         $traverser->addVisitor(new NodeVisitor\NestedLoop());
+        $traverser->addVisitor(new NodeVisitor\GlobalsExchanger());
         return $traverser->traverse($stmts);
     }
 
