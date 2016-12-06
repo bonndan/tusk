@@ -100,10 +100,18 @@ class Groovy extends Standard
      * @var DocBlockFactory
      */
     private $docblockFactory;
+    
+    /**
+     * @var \Monolog\Logger
+     */
+    private $logger;
 
     public function __construct(array $options = array())
     {
         parent::__construct($options);
+        if (isset($this->options['logger']))
+            $this->logger = $this->options['logger'];
+        
         $this->docblockFactory = DocBlockFactory::createInstance();
     }
 
@@ -243,8 +251,12 @@ class Groovy extends Standard
         $comments = $node->getAttributes('comments');
         if ($comments && isset($comments['comments'][0])) {
             $doc = $comments['comments'][0]; /* @var $doc Doc */
-            $docblock = $this->docblockFactory->create($doc->getText());
-            return $docblock->getTags();
+            try {
+                $docblock = $this->docblockFactory->create($doc->getText());
+                return $docblock->getTags();
+            } catch (Exception $ex) {
+                $this->logger->addWarning($ex->getMessage());
+            }
         }
 
         return [];
@@ -267,7 +279,7 @@ class Groovy extends Standard
     {
         return 'throw ' . $this->p($node->expr);
     }
-
+    
     public function p(Node $node)
     {
         //var_dump(get_class($node));
@@ -390,11 +402,13 @@ class Groovy extends Standard
     {
         if ($node->name instanceof Expr) {
             return '"$' . $this->p($node->name) . '"';
+        } elseif ($repl = $node->getAttribute(\Tusk\NodeVisitor\Literal::REPLACEMENT)) {
+            return $repl;
         } else {
             return $node->name;
         }
     }
-
+    
     public function pExpr_Assign(Assign $node)
     {
         $buffer = '';
@@ -599,6 +613,7 @@ class Groovy extends Standard
 
     public function pExpr_MethodCall(MethodCall $node)
     {
+        //TODO Undefined property: PhpParser\Node\Expr\New_::$name
         $buffer = ($node->var->name == 'this') ? '' : $this->pDereferenceLhs($node->var) . '.';
         return $buffer . $this->pObjectProperty($node->name)
             . '(' . $this->pCommaSeparated($node->args) . ')';
