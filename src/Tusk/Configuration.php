@@ -21,6 +21,10 @@ class Configuration
      */
     public $target;
     
+    public $targetSrcDir = 'src/main/groovy';
+    
+    public $targetResourcesDir = 'src/main/resources';
+    
     /**
      * @var string[] source dir => target namespace
      */

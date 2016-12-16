@@ -19,7 +19,7 @@ class Tusk
      * @var Configuration
      */
     private $config;
-    
+
     /**
      * @var \Monolog\Logger
      */
@@ -32,7 +32,7 @@ class Tusk
         } else {
             $this->config = new Configuration();
         }
-        
+
         $this->logger = new \Monolog\Logger('Tusk');
         $this->logger->pushHandler(new \Monolog\Handler\ErrorLogHandler());
     }
@@ -51,10 +51,10 @@ class Tusk
                 $this->runDirectory($path);
             }
         }
-        
+
         if (!$this->config->isConfigured())
             die("Please provide a path or a valid configuration.");
-        
+
         $this->runProject();
     }
 
@@ -71,14 +71,14 @@ class Tusk
                 mkdir(dirname($target), 0775, true);
                 $this->logger->addInfo("Created directory " . dirname($target));
             }
-            
-            file_put_contents($target, (string)$groovySrc);
+
+            file_put_contents($target, (string) $groovySrc);
             $this->logger->addInfo("Written $target");
         } else {
             echo $groovySrc;
         }
     }
-    
+
     /**
      * Removes any artifical parts like ".class.php" and adds .groovy suffix.
      * 
@@ -86,15 +86,32 @@ class Tusk
      * @param SplFileInfo $fileInfo
      * @return string
      */
-    private function getPathForFile(State $tuskFile, SplFileInfo $fileInfo) : string
+    private function getPathForFile(State $tuskFile, SplFileInfo $fileInfo): string
     {
-        $cleanFileName = explode('.', $fileInfo->getFilename())[0];
-        $targetFile = $this->config->target 
-                . DIRECTORY_SEPARATOR 
-                . str_replace(".", DIRECTORY_SEPARATOR, $tuskFile->getPackage())
-                . DIRECTORY_SEPARATOR
-                . $cleanFileName . ".groovy";
+        $cleanFileName = $this->cleanFileName($fileInfo->getFilename());
+        $targetFile = $this->config->target . DIRECTORY_SEPARATOR
+            . $this->config->targetSrcDir . DIRECTORY_SEPARATOR
+            . str_replace(".", DIRECTORY_SEPARATOR, $tuskFile->getPackage())
+            . DIRECTORY_SEPARATOR
+            . $cleanFileName . ".groovy";
         return $targetFile;
+    }
+
+    private function cleanFileName(string $filename) : string
+    {
+        if (strpos($filename, ".") === false)
+            return $filename;
+        
+        $remove = ['inc', 'class'];
+        $parts = explode('.', $filename);
+        array_pop($parts);
+        foreach ($remove as $r) {
+            if (($key = array_search($r, $parts)) !== false) {
+                unset($parts[$key]);
+            }
+        }
+        
+        return implode('', $parts);
     }
 
     private function runDirectory(string $path, string $namespace = null)
@@ -110,15 +127,23 @@ class Tusk
             $this->runFile($file, $namespace);
         }
     }
-    
+
     private function runProject()
     {
         foreach ($this->config->namespaces as $dir => $ns) {
             $this->runDirectory($this->config->source . DIRECTORY_SEPARATOR . $dir, $ns);
         }
+
+        foreach ($this->config->resources as $source => $target) {
+            $dest = $this->config->target . DIRECTORY_SEPARATOR . $this->config->targetResourcesDir . DIRECTORY_SEPARATOR . $target;
+            exec("mkdir -p $dest");
+            exec("cp -r " . $this->config->source . DIRECTORY_SEPARATOR . $source . " " . dirname($dest));
+        }
+
+        $this->writeBuildFile();
     }
 
-    public function toGroovy(array $statements, \Tusk\State $state) : State
+    public function toGroovy(array $statements, \Tusk\State $state): State
     {
         $printer = new Printer\Groovy(['state' => $state, 'logger' => $this->logger]);
         $state->setSrc($printer->prettyPrint($statements));
@@ -144,6 +169,22 @@ class Tusk
         $traverser->addVisitor(new NodeVisitor\GlobalsExchanger());
         $traverser->addVisitor(new NodeVisitor\ServerVars());
         return $traverser->traverse($stmts);
+    }
+
+    private function writeBuildFile()
+    {
+        $contents = "apply plugin: 'groovy'
+
+repositories {
+   mavenCentral()
+}
+
+dependencies {
+   compile 'org.codehaus.groovy:groovy-all:2.4.5'
+   compile 'javax.servlet:javax.servlet-api:3.1.0'
+   testCompile 'junit:junit:4.12'
+}";
+        file_put_contents($this->config->target . DIRECTORY_SEPARATOR . "build.gradle", $contents);
     }
 
 }
