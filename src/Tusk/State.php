@@ -44,6 +44,11 @@ class State
         $this->package = $package;
     }
     
+    public function setFileName(string $name)
+    {
+        $this->filename = $name;
+    }
+    
     public function getFilename()
     {
         return $this->filename;

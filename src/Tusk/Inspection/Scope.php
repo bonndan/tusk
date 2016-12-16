@@ -127,4 +127,15 @@ class Scope
         return strpos($name, 'this') !== false;
     }
 
+    /**
+     * Returns the scope of the node.
+     * 
+     * @param \PhpParser\Node $node
+     * @return \Tusk\Inspection\Scope
+     */
+    public static function of(\PhpParser\Node $node)
+    {
+        return $node->getAttribute(self::SCOPE);
+    }
+
 }

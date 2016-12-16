@@ -3,6 +3,7 @@
 namespace Tusk\Printer;
 
 use Exception;
+use Monolog\Logger;
 use phpDocumentor\Reflection\DocBlock\Tags\Param;
 use phpDocumentor\Reflection\DocBlock\Tags\Return_;
 use phpDocumentor\Reflection\DocBlock\Tags\Var_;
@@ -84,6 +85,9 @@ use PhpParser\Node\Stmt\UseUse;
 use PhpParser\PrettyPrinter\Standard;
 use RuntimeException;
 use SebastianBergmann\CodeCoverage\Report\Xml\Node as Node2;
+use Tusk\Inspection\Scope;
+use Tusk\NodeVisitor\Literal;
+use Tusk\NodeVisitor\NestedLoop;
 use Tusk\NodeVisitor\TreeRelation;
 use Tusk\NodeVisitor\VariableDefinition;
 use Tusk\State;
@@ -102,7 +106,7 @@ class Groovy extends Standard
     private $docblockFactory;
     
     /**
-     * @var \Monolog\Logger
+     * @var Logger
      */
     private $logger;
 
@@ -177,19 +181,24 @@ class Groovy extends Standard
             }
         }
 
+        $this->getState()->setFileName($node->name);
         return parent::pStmt_Class($node);
     }
 
+    /**
+     * @todo cleanup
+     */
     public function pStmt_Property(Property $node)
     {
-        $buffer = (0 === $node->type ? 'var ' : $this->pModifiers($node->type));
+        $buffer = (0 === $node->flags ? 'def ' : $this->pModifiers($node->flags));
 
         if (count($node->props) == 1) {
 
             $type = $this->getType($node->props[0]->default);
-            if ($type)
+            if ($type) {
+                $buffer = str_replace("def ", '', $buffer);
                 return $buffer . $type . ' ' . $this->p($node->props[0]) . PHP_EOL;
-
+            }
 
             $tags = $this->getNodeDocBlockTags($node);
             if (isset($tags[0])) {
@@ -197,7 +206,9 @@ class Groovy extends Standard
             }
         }
 
-        return $buffer . $this->pCommaSeparated($node->props);
+        if (empty($buffer))
+            $buffer = 'def ';
+        return $buffer . $this->pCommaSeparated($node->props) . PHP_EOL;
     }
 
     private function getType($typeObject): string
@@ -284,6 +295,16 @@ class Groovy extends Standard
     {
         //var_dump(get_class($node));
         return $this->{'p' . $node->getType()}($node);
+    }
+    
+    public function pExpr_Include(Expr\Include_ $node)
+    {
+        return $this->getTodo(parent::pExpr_Include($node));
+    }
+    
+    public function pExpr_ErrorSuppress(Expr\ErrorSuppress $node)
+    {
+        return $this->pPrefixOp('Expr_ErrorSuppress', '', $node->expr);
     }
 
     public function pComments(array $comments)
@@ -402,7 +423,7 @@ class Groovy extends Standard
     {
         if ($node->name instanceof Expr) {
             return '"$' . $this->p($node->name) . '"';
-        } elseif ($repl = $node->getAttribute(\Tusk\NodeVisitor\Literal::REPLACEMENT)) {
+        } elseif ($repl = $node->getAttribute(Literal::REPLACEMENT)) {
             return $repl;
         } else {
             return $node->name;
@@ -417,6 +438,9 @@ class Groovy extends Standard
             $isDefition = $node->var->getAttribute(VariableDefinition::MARKER);
             if (!$hasWhitespace && $isDefition)
                 $buffer = 'def ';
+            if ($node->getAttribute(TreeRelation::PARENT) instanceof If_) {
+                $buffer = '';
+            }
         }
         
         return $buffer . parent::pExpr_Assign($node);
@@ -434,9 +458,7 @@ class Groovy extends Standard
 
     public function pExpr_PropertyFetch(PropertyFetch $node)
     {
-        $scope = $node->getAttribute(\Tusk\Inspection\Scope::SCOPE);
-        /* @var $scope \Tusk\Inspection\Scope */
-        $obsolete = !$scope->hasVar($node);
+        $obsolete = !Scope::of($node)->hasVar($node);
         $buffer = $obsolete ? '' : $this->pDereferenceLhs($node->var) . '.' ;
         return $buffer . $this->pObjectProperty($node->name);
     }
@@ -474,7 +496,10 @@ class Groovy extends Standard
     public function pStmt_For(For_ $node)
     {
         if ($node->init[0] instanceof Assign) {
-            $node->init[0]->var->name = "int " . $node->init[0]->var->name;
+            $scope = Scope::of($node->init[0]->var);
+            $definition = ($scope && $scope->hasVar($node->init[0]->var->name) && $node->init[0]->var->getAttribute(VariableDefinition::MARKER));
+            $buffer = $definition ? 'int ' : '';
+            $node->init[0]->var->name = $buffer . $node->init[0]->var->name;
         }
 
         return $this->getLoopLabel($node) . parent::pStmt_For($node);
@@ -486,17 +511,17 @@ class Groovy extends Standard
         $valueVar = $this->p($node->valueVar);
         if (null !== $node->keyVar) {
             $valueVar = 'entry';
-            $scope = $this->getNodeScope($node->keyVar);
+            $scope = Scope::of($node->keyVar);
             while ($scope->hasVar($valueVar)) {
                 $valueVar .= '_';
             }
             $scope->addVar(new Variable($valueVar)); //registering dummy var
             $keyHandling = "\n" . 
                 "    " . ($node->keyVar->getAttribute(VariableDefinition::MARKER) ? 'def ' : '') 
-                . $this->p($node->keyVar) ." = (" . $valueVar . " in Map.Entry) ? entry.key : " .$this->p($node->expr) . ".indexOf(entry)" 
+                . $this->p($node->keyVar) ." = (" . $valueVar . " in Map.Entry) ? $valueVar.key : " . $this->p($node->expr) . ".indexOf($valueVar)" 
                 . $this->getTodo("unefficient"). "\n" . 
                 "    " . ($node->keyVar->getAttribute(VariableDefinition::MARKER) ? 'def ' : '') 
-                . $this->p($node->valueVar) ." = (" . $valueVar . " in Map.Entry) ? entry.value : entry\n";
+                . $this->p($node->valueVar) ." = (" . $valueVar . " in Map.Entry) ? " . $valueVar .".value : $valueVar\n";
         }
 
         return $this->getLoopLabel($node) . 'for (' . $valueVar . ' in ' . $this->p($node->expr) . ') {'
@@ -511,10 +536,10 @@ class Groovy extends Standard
     
     private function getLoopLabel(Node $node) : string
     {
-        if (!$node->getAttribute(\Tusk\NodeVisitor\NestedLoop::LEVEL_BREAKS))
+        if (!$node->getAttribute(NestedLoop::LEVEL_BREAKS))
             return '';
         
-        return \Tusk\NodeVisitor\NestedLoop::LABEL_PREFIX . $node->getAttribute(\Tusk\NodeVisitor\NestedLoop::DEPTH) . ': ' . PHP_EOL;
+        return NestedLoop::LABEL_PREFIX . $node->getAttribute(NestedLoop::DEPTH) . ': ' . PHP_EOL;
     }
 
     protected function preprocessNodes(array $nodes)
@@ -717,7 +742,14 @@ class Groovy extends Standard
                 $key = '(' . $this->pExpr_ClassConstFetch($node->key) . ')';
             } elseif ($node->key instanceof Variable) {
                 $key = '(' . $node->key->name . ')';
-            } elseif ($node->key instanceof String_ || $node->key instanceof LNumber) {
+            } elseif ($node->key instanceof String_) {
+                $hasSpecialChar = function ($str) {
+                    foreach ([' ', '.', '-'] as $chr)
+                        if (strpos($str, $chr) !== false)
+                            return true;
+                };
+                $key = $hasSpecialChar($node->key->value) ? '"' . $node->key->value . '"' : $node->key->value;
+            } elseif ($node->key instanceof LNumber) {
                 $key = $node->key->value;
             } else {
                 $key = '(' . $this->p($node->key) . ')';
@@ -879,7 +911,7 @@ class Groovy extends Standard
 
     public function pStmt_If(If_ $node)
     {
-        if ($node->cond instanceof Assign) {
+        if (false && $node->cond instanceof Assign) {
             $cond = '(' . $this->p($node->cond) . ')';
         } else {
             $cond = $this->p($node->cond);
@@ -899,13 +931,13 @@ class Groovy extends Standard
     
     public function pStmt_Break(Stmt\Break_ $node)
     {
-        $targetLoop = $node->getAttribute(\Tusk\NodeVisitor\NestedLoop::TARGET_LOOP);
+        $targetLoop = $node->getAttribute(NestedLoop::TARGET_LOOP);
         return 'break' . ($targetLoop ? ' ' . $targetLoop : '');
     }
     
     public function pStmt_Continue(Stmt\Continue_ $node)
     {
-        $targetLoop = $node->getAttribute(\Tusk\NodeVisitor\NestedLoop::TARGET_LOOP);
+        $targetLoop = $node->getAttribute(NestedLoop::TARGET_LOOP);
         return 'continue' . ($targetLoop ? ' ' . $targetLoop : '');
     }
     
@@ -952,7 +984,7 @@ class Groovy extends Standard
         }
         return implode(' && ',$buffer);
     }
-
+    
     private function pUseType($type)
     {
         return $type === Use_::TYPE_FUNCTION ? 'static ' :  '';
@@ -994,14 +1026,4 @@ class Groovy extends Standard
         throw new Error("ArrayItem conversion error on " . serialize($node) . "in " . $this->getState()->getFilename(), $node->getAttributes());
     }
 
-    /**
-     * Return the associated scope.
-     * 
-     * @param Node $node
-     * @return \Tusk\Inspection\Scope|null
-     */
-    private function getNodeScope(Node $node)
-    {
-        return $node->getAttribute(\Tusk\Inspection\Scope::SCOPE);
-    }
 }

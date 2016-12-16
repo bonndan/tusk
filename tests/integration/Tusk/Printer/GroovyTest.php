@@ -168,6 +168,18 @@ class GroovyTest extends TestCase
         $this->assertNOtContains(";", $groovy);
     }
     
+    public function testClassPropertyVar()
+    {
+        $code = "class abc {
+    var \$a = '123';
+}";
+
+        $groovy = $this->parse($code);
+        $this->assertContains("String a = '123'", $groovy);
+        $this->assertNotContains("var String", $groovy);
+        $this->assertNotContains("def String", $groovy);
+    }
+    
     public function testThisOmitted()
     {
         $code = "
@@ -242,7 +254,7 @@ class abc {
         $this->assertNotContains('namespace Test\A', $groovy);
     }
     
-    public function testForLoop()
+    public function testForLoopNewCounter()
     {
         $code = '
 for ($i=0;$i<10;$i++) {
@@ -252,6 +264,19 @@ for ($i=0;$i<10;$i++) {
         $groovy = $this->parse($code);
         $this->assertContains('for (int i = 0; i < 10; i++)', $groovy);
         $this->assertNotContains('for ($i=0;$i<10;$i++)', $groovy);
+    }
+    
+    public function testForLoopCounterInScope()
+    {
+        $code = '
+$i = 0;
+for ($i=0;$i<10;$i++) {
+    continue;
+}';
+
+        $groovy = $this->parse($code);
+        $this->assertContains('for (i = 0; i < 10; i++)', $groovy);
+        $this->assertNotContains('for (int', $groovy);
     }
     
     public function testForEachLoop()
@@ -1184,6 +1209,22 @@ class A
         $this->assertNotContains('self::B', $groovy);
     }
     
+    public function testArrayWhitespaceKey()
+    {
+        $code = "
+class A 
+{
+    const B = 'b';
+    
+    function foo()
+    {
+        return ['A and B' => 'foo'];
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains('["A and B":', $groovy);
+    }
+    
     public function testArrayFuncCallKey()
     {
         $code = "
@@ -1290,7 +1331,8 @@ class B {
         $this->assertNotContains("private", $groovy);
     }
     
-    public function testIfExpressionEval()
+    //unwanted
+    public function _testIfExpressionEval()
     {
         $code = "
 if(\$a = trim(\$b))
@@ -1378,6 +1420,28 @@ class A {
         $this->assertContains("def a = getB()", $groovy);
         $this->assertContains("a = 0", $groovy);
         $this->assertNotContains("def a = 0", $groovy);
+    }
+    
+    public function testAssignInIf()
+    {
+        $code = "
+if (\$a = getB()) {
+    echo \$a;
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("if (a = getB())", $groovy);
+        $this->assertNotContains("if (def", $groovy);
+    }
+    
+    public function testRemoveSilence()
+    {
+        $code = "
+@require 'test';
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("require", $groovy);
+        $this->assertNotContains("@", $groovy);
     }
     
     public function testCastingPrecedenceBool()
@@ -1522,6 +1586,21 @@ class A {
 ";
         $groovy = $this->parse($code);
         $this->assertContains('a = request.getScheme() == "https" ? "on" : ""', $groovy);
+    }
+    
+    public function testRequireInclude()
+    {
+        $code = "
+require 'a.php';
+require_once('b.php');
+include 'c.php';
+include_once('d.php');
+";
+        $groovy = $this->parse($code);
+        $this->assertContains('/* TODO require ', $groovy);
+        $this->assertContains('/* TODO require_once', $groovy);
+        $this->assertContains('/* TODO include ', $groovy);
+        $this->assertContains('/* TODO include_once', $groovy);
     }
     
     /**

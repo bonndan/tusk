@@ -42,7 +42,7 @@ class VariableDefinition extends \PhpParser\NodeVisitorAbstract
         
         if ($this->isQualified($node)) {
             if (!$scope->hasVar($node)) {
-                $node->setAttribute(self::MARKER, true);
+                $node->setAttribute(self::MARKER, true);                
                 $scope->addVar($node);
             } else {
                 $scope->registerOn($node);
