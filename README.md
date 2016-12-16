@@ -45,3 +45,4 @@ Groovy outuput
 * add possibility for automatic custom imports
 * add possibility for on demand imports of non-resolvable classes
 * add replacement templates for code like $_POST access
+* handle var definition in conditional paths
