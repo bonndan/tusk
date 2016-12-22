@@ -42,6 +42,22 @@ class Configuration
      */
     public $other = [];
     
+    public $buildFile = "apply plugin: 'groovy'
+
+repositories {
+   mavenCentral()
+}
+
+dependencies {
+   compile 'org.codehaus.groovy:groovy-all:2.4.5'
+   compile 'javax.servlet:javax.servlet-api:3.1.0'
+   testCompile 'junit:junit:4.12'
+}";
+    
+    public $alwaysImport = [];
+    
+    public $onDemandImport = [];
+    
     public function isConfigured() : bool
     {
         return $this->source && $this->target;

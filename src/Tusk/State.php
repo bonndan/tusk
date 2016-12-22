@@ -18,6 +18,12 @@ class State
      * @var string[]
      */
     private $used = [];
+    
+    /**
+     * Explicit imports
+     * @var string[] 
+     */
+    private $imports = [];
 
     public function __construct(string $filename)
     {
@@ -66,12 +72,31 @@ class State
      */
     public function addUse(string $used)
     {
-        $this->uses[$used] = $used;
+        $this->used[$used] = $used;
     }
     
     public function isUsed($used) : bool
-    {
+    {       
         return array_key_exists($used, $this->used);
     }
 
+    /**
+     * Returns all explicit imports.
+     * 
+     * @return string[]
+     */
+    public function getImports() : array
+    {
+        return $this->imports;
+    }
+
+    /**
+     * Add a class etc. to import.
+     * 
+     * @param string $import
+     */
+    public function addImport(string $import)
+    {
+        $this->imports[$import] = $import;
+    }
 }

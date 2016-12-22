@@ -27,6 +27,8 @@ Groovy outuput
 * evaluates type information gathered by PHP-Parser and tries to find equivalents
 * uses DocBlock type information where available
 * convert some builtin php functions with Groovy equivalents (e.g. isset)
+* add automatic custom imports
+* add on demand imports of non-resolvable classes via mapping
 
 ## Challenges
 
@@ -42,7 +44,4 @@ Groovy outuput
 * use eachwithindex if loop does not contain: break, continue, return
 * prevent useless casting: if ((int) id > 0) where id is already int
 * simplify boolean comparison: "false==" or "true=="
-* add possibility for automatic custom imports
-* add possibility for on demand imports of non-resolvable classes
-* add replacement templates for code like $_POST access
 * handle var definition in conditional paths

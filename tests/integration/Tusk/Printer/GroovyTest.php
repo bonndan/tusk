@@ -12,10 +12,16 @@ class GroovyTest extends TestCase
      * @var Tusk\Tusk
      */
     private $tusk;
+    
+    /**
+     * @var \Tusk\Configuration
+     */
+    private $config;
 
     protected function setUp()
     {
-        $this->tusk = new Tusk\Tusk();
+        $this->config = new \Tusk\Configuration();
+        $this->tusk = new Tusk\Tusk($this->config);
     }
 
     public function testClassConstString()
@@ -262,7 +268,7 @@ for ($i=0;$i<10;$i++) {
 }';
 
         $groovy = $this->parse($code);
-        $this->assertContains('for (int i = 0; i < 10; i++)', $groovy);
+        $this->assertContains('for (def i = 0; i < 10; i++)', $groovy);
         $this->assertNotContains('for ($i=0;$i<10;$i++)', $groovy);
     }
     
@@ -275,8 +281,8 @@ for ($i=0;$i<10;$i++) {
 }';
 
         $groovy = $this->parse($code);
+        $this->assertContains('def i = 0', $groovy);
         $this->assertContains('for (i = 0; i < 10; i++)', $groovy);
-        $this->assertNotContains('for (int', $groovy);
     }
     
     public function testForEachLoop()
@@ -292,7 +298,7 @@ foreach ($arr as $value) {
         $this->assertNotContains('for ($i=0;$i<10;$i++)', $groovy);
     }
     
-    public function testForEachLoopNested()
+    public function testForEachLoopNested1()
     {
         $code = '
 class A
@@ -678,6 +684,24 @@ class A {
 }";
         $groovy = $this->parse($code);
         $this->assertContains('test(String flag)', $groovy);
+    }
+    
+    public function testParamNoDef()
+    {
+        $code = "
+class A {
+    
+    /**
+     * @param bool \$flag
+     * @return void
+     */
+    public function test(string \$flag) {
+    
+        \$flag = 0;
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertNotContains('def flag', $groovy);
     }
     
     public function testCatch()
@@ -1430,8 +1454,9 @@ if (\$a = getB()) {
 }
 ";
         $groovy = $this->parse($code);
-        $this->assertContains("if (a = getB())", $groovy);
+        $this->assertContains("if ((a = getB()))", $groovy);
         $this->assertNotContains("if (def", $groovy);
+        $this->assertNotContains("if ((def", $groovy);
     }
     
     public function testRemoveSilence()
@@ -1602,6 +1627,341 @@ include_once('d.php');
         $this->assertContains('/* TODO include ', $groovy);
         $this->assertContains('/* TODO include_once', $groovy);
     }
+    
+    public function testImportAlways()
+    {
+        $code = "
+namespace ABC;
+class A {
+    
+    public function a()
+    {
+        return 1;
+    }
+}
+";
+        $this->config->alwaysImport[] = 'X.Y.ZClass';
+        $groovy = $this->parse($code);
+        $this->assertContains("import X.Y.ZClass", $groovy);
+    }
+    
+    public function testImportOnDemandStaticCall()
+    {
+        $code = "
+namespace ABC;
+class A {
+    
+    public function a()
+    {
+        return TestClass::abc();
+    }
+}
+";
+        $this->config->onDemandImport['TestClass'] = 'X.Y.ZClass';
+        $groovy = $this->parse($code);
+        $this->assertContains("import X.Y.ZClass", $groovy);
+    }
+    
+    public function testImportOnDemandStaticProp()
+    {
+        $code = "
+namespace ABC;
+class A {
+    
+    public function a()
+    {
+        return TestClass::\$abc;
+    }
+}
+";
+        $this->config->onDemandImport['TestClass'] = 'X.Y.ZClass';
+        $groovy = $this->parse($code);
+        $this->assertContains("import X.Y.ZClass", $groovy);
+    }
+    
+    public function testImportOnDemandClassConst()
+    {
+        $code = "
+namespace ABC;
+class A {
+    
+    public function a()
+    {
+        return TestClass::ABC;
+    }
+}
+";
+        $this->config->onDemandImport['TestClass'] = 'X.Y.ZClass';
+        $groovy = $this->parse($code);
+        $this->assertContains("import X.Y.ZClass", $groovy);
+    }
+    
+    public function testImportOnDemandTypehint()
+    {
+        $code = "
+namespace ABC;
+class A {
+    
+    public function a(TestClass \$t)
+    {
+        return 1;
+    }
+}
+";
+        $this->config->onDemandImport['TestClass'] = 'X.Y.ZClass';
+        $groovy = $this->parse($code);
+        $this->assertContains("import X.Y.ZClass", $groovy);
+    }
+    
+    public function testImportOnDemandUsedTypehint()
+    {
+        $code = "
+namespace ABC;
+use Foo as TestClass;
+
+class A {
+    
+    public function a(TestClass \$t)
+    {
+        return 1;
+    }
+}
+";
+        $this->config->onDemandImport['TestClass'] = 'X.Y.ZClass';
+        $groovy = $this->parse($code);
+        $this->assertNotContains("import X.Y.ZClass", $groovy);
+    }
+    
+    public function testScopeVarsByChildrenRemainsLocal()
+    {
+        $code = "
+namespace ABC;
+
+class A {
+    
+    public function a()
+    {
+        while (true) {
+            \$b ='c';
+        }
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("def b = 'c'", $groovy);
+        $this->assertNotContains("defb/", $this->normalizeInvisibleChars($groovy));
+    }
+    
+    public function testScopeVarsInConditionRemainLocal()
+    {
+        $code = "
+namespace ABC;
+
+class A {
+    
+    public function a()
+    {
+        while (\$b ='c') {
+            \$c = 1;
+            echo \$c;
+        }
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("b = 'c'", $groovy);
+        $this->assertNotContains("def b = 'c'", $groovy);
+    }
+    
+    public function testScopeVarsForLoopRemainLocal()
+    {
+        $code = "
+namespace ABC;
+
+class A {
+    
+    public function a()
+    {
+        for (\$i=0; \$i<2;\$i++) {
+            echo \$i;
+        }
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("for (def i = ", $groovy);
+    }
+    
+    public function testScopeVarsInForEachRemainLocal()
+    {
+        $code = "
+namespace ABC;
+
+class A {
+    
+    public function a()
+    {
+        if (true)
+            foreach (\$b as \$c) {
+                echo \$c;
+            }
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("c in b", $groovy);
+        $this->assertNotContains("def c", $groovy);
+    }
+    
+    public function testScopeVarsInForEachKVRemainLocal1()
+    {
+        $code = "
+namespace ABC;
+
+class A {
+    
+    public function a()
+    {
+        if (true) {
+            for (\$i =0; \$i <1; \$i++) {
+                echo \$i;
+            }
+        }
+        foreach (\$b as \$key => \$c) {
+            return a(\$key);
+        }
+        
+        for (\$i =0; \$i <1; \$i++) {
+            echo \$i;
+        }
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertNotContains("defkeydef", $this->normalizeInvisibleChars($groovy));
+        $this->assertNotContains("defcfor", $this->normalizeInvisibleChars($groovy));
+    }
+    
+    
+    public function testScopeVarsInForRemainLocal()
+    {
+        $code = "
+namespace ABC;
+
+class A {
+    
+    public function a()
+    {
+        if (true)
+            for (\$i =0; \$i <1; \$i++) {
+                echo \$c;
+            }
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("def i", $groovy);
+        $this->assertNotContains("defifor", $this->normalizeInvisibleChars($groovy));
+    }
+    
+    
+    public function testScopeVarsInCatchRemainLocal()
+    {
+        $code = "
+namespace ABC;
+
+class A {
+    
+    public function a()
+    {
+        try {
+            \$b ='c';
+        }
+        catch (Exception \$ex) {
+            echo \$c;
+        }
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("Exception ex", $groovy);
+        $this->assertNotContains("def ex", $groovy);
+    }
+    
+    public function testScopeVarsByChildrenUsedLater()
+    {
+        $code = "
+namespace ABC;
+
+class A {
+    
+    public function a()
+    {
+        while (true) {
+            \$b ='c';
+        }
+        
+        echo \$b;
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("defb", $this->normalizeInvisibleChars($groovy));
+        $this->assertNotContains("def b = 'c'", $groovy);
+    }
+    
+    public function testScopeVarsByChildrenNestedScopes()
+    {
+        $code = "
+namespace ABC;
+
+class A {
+    
+    public function a()
+    {
+        if (true) {
+            switch (\$this->x) {
+                case 1: \$b ='a'; break;
+                case 2: \$b ='b'; break;
+                case 3: \$b ='c'; break;
+                case 4: \$b ='d'; break;
+                default: \$b = 0;
+            }
+            
+            echo \$b;
+        }
+        
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("def b", $groovy);
+        $this->assertNotContains("def b = '", $groovy);
+    }
+    
+    public function testScopeVarsByChildrenUsedBefore()
+    {
+        $code = "
+namespace ABC;
+
+class A {
+    
+    public function a()
+    {
+        \$b = 'a';
+        while (true) {
+            if (true)
+                \$b ='c';
+        }
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("def b = 'a'", $groovy);
+        $this->assertNotContains("def b = 'c'", $groovy);
+    }
+    
+  
     
     /**
      * @param string $code without leading <?php 

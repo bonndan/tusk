@@ -49,4 +49,26 @@ class TreeRelation extends StatefulVisitor
         $this->previous = $node;
         array_pop($this->stack);;
     }
+    
+    /**
+     * Returns the previous node.
+     * 
+     * @param \PhpParser\Node $node
+     * @return \PhpParser\Node|null
+     */
+    public static function previousOf(\PhpParser\Node $node)
+    {
+        return $node->getAttribute(self::PREVIOUS);
+    }
+    
+    /**
+     * Return the parent.
+     * 
+     * @param \PhpParser\Node $node
+     * @return \PhpParser\Node|null
+     */
+    public static function parentOf(\PhpParser\Node $node)
+    {
+        return $node->getAttribute(self::PARENT);
+    }
 }

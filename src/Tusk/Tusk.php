@@ -140,7 +140,13 @@ class Tusk
             exec("cp -r " . $this->config->source . DIRECTORY_SEPARATOR . $source . " " . dirname($dest));
         }
 
-        $this->writeBuildFile();
+        //write build file
+        if (!empty($this->config->buildFile)) {
+            file_put_contents(
+                $this->config->target . DIRECTORY_SEPARATOR . "build.gradle",
+                $this->config->buildFile
+            );
+        }
     }
 
     public function toGroovy(array $statements, \Tusk\State $state): State
@@ -168,23 +174,8 @@ class Tusk
         $traverser->addVisitor(new NodeVisitor\NestedLoop());
         $traverser->addVisitor(new NodeVisitor\GlobalsExchanger());
         $traverser->addVisitor(new NodeVisitor\ServerVars());
+        $traverser->addVisitor(new NodeVisitor\Imports($state, $this->config));
         return $traverser->traverse($stmts);
-    }
-
-    private function writeBuildFile()
-    {
-        $contents = "apply plugin: 'groovy'
-
-repositories {
-   mavenCentral()
-}
-
-dependencies {
-   compile 'org.codehaus.groovy:groovy-all:2.4.5'
-   compile 'javax.servlet:javax.servlet-api:3.1.0'
-   testCompile 'junit:junit:4.12'
-}";
-        file_put_contents($this->config->target . DIRECTORY_SEPARATOR . "build.gradle", $contents);
     }
 
 }
