@@ -417,7 +417,7 @@ class Groovy extends Standard
      */
     public function pParam(Param2 $node)
     {
-        return ($node->type ? $this->pType($node->type) . ' ' : '')
+        return ($node->type ? $this->pType($node->type) . ' ' : self::DEF . ' ')
             . ($node->variadic ? '...' : '')
             . $node->name
             . ($node->default ? ' = ' . $this->p($node->default) : '');

@@ -175,6 +175,7 @@ class Tusk
         $traverser->addVisitor(new NodeVisitor\GlobalsExchanger());
         $traverser->addVisitor(new NodeVisitor\ServerVars());
         $traverser->addVisitor(new NodeVisitor\Imports($state, $this->config));
+        $traverser->addVisitor(new NodeVisitor\InterfaceDefaultValues());
         return $traverser->traverse($stmts);
     }
 

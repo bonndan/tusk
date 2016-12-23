@@ -194,9 +194,6 @@ class Scope
         }
 
         $name = $this->nameResolver->getFQN($node);
-        if (strpos($name, 'this.')) {
-            return false;
-        }
         $exists = isset($this->vars[$name]);
         if (!$exists || $this->nameResolver->isProperty($name)) {
             $rawName = $this->nameResolver->getLocalName($node);

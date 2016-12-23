@@ -1414,7 +1414,7 @@ class A {
 }
 ";
         $groovy = $this->parse($code);
-        $this->assertContains("a(_new)", $groovy);
+        $this->assertContains("a(def _new)", $groovy);
         $this->assertContains("b(_new)", $groovy);
         $this->assertNotContains("(new", $groovy);
     }
@@ -1961,6 +1961,39 @@ class A {
         $this->assertNotContains("def b = 'c'", $groovy);
     }
     
+    public function testInterfaceDefaultValues()
+    {
+        $code = "
+namespace ABC;
+
+interface A {
+    
+    public function a(\$test = 0);
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("def a()", $groovy);
+        $this->assertContains("def a(def test)", $groovy);
+        $this->assertNotContains("test = 0", $groovy);
+    }
+    
+    public function testInterfaceMultipleDefaultValues()
+    {
+        $code = "
+namespace ABC;
+
+interface A {
+    
+    public function a(\$one, \$two = 0, \$three = 0);
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("def a(def one)", $groovy);
+        $this->assertContains("def a(def one, def two)", $groovy);
+        $this->assertContains("def a(def one, def two, def three)", $groovy);
+        $this->assertNotContains("two = 0", $groovy);
+        $this->assertNotContains("three = 0", $groovy);
+    }
   
     
     /**
