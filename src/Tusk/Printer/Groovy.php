@@ -191,7 +191,7 @@ class Groovy extends Standard
      */
     public function pStmt_Property(Property $node)
     {
-        $buffer = (0 === $node->flags ? self::DEF : $this->pModifiers($node->flags));
+        $buffer = $this->pModifiers($node->flags);
 
         if (count($node->props) == 1) {
 
@@ -206,9 +206,9 @@ class Groovy extends Standard
                 return $buffer . $this->getType($tags[0]) . ' ' . $this->p($node->props[0]) . PHP_EOL;
             }
         }
-
-        if (empty($buffer))
-            $buffer = self::DEF;
+        
+        if (empty($buffer) || $node->getAttribute(Scope::VAR_DEFINITION))
+            $buffer .= self::DEF . ' ';
         return $buffer . $this->pCommaSeparated($node->props) . PHP_EOL;
     }
 
@@ -382,7 +382,7 @@ class Groovy extends Standard
 
 
         if ($node instanceof ClassMethod) {
-            $buffer = $this->pModifiers($node->type) . $buffer;
+            $buffer = $this->pModifiers($node->flags) . $buffer;
         }
 
         $buffer .= '(' . $this->pCommaSeparated($node->params) . ')' . PHP_EOL;

@@ -168,7 +168,7 @@ class Tusk
         $traverser->addVisitor(new NodeVisitor\Destruct());
         $traverser->addVisitor(new NodeVisitor\MagicCall());
         $traverser->addVisitor(new NodeVisitor\BuiltInException($state));
-        $traverser->addVisitor(new NodeVisitor\PublicTraitMethods());
+        $traverser->addVisitor(new NodeVisitor\TraitsNoProtectedMembers());
         $traverser->addVisitor(new NodeVisitor\ReservedWords());
         $traverser->addVisitor(new NodeVisitor\VariableDefinition());
         $traverser->addVisitor(new NodeVisitor\NestedLoop());

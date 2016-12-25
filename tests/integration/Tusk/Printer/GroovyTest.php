@@ -81,7 +81,7 @@ class GroovyTest extends TestCase
 }";
 
         $groovy = $this->parse($code);
-        $this->assertContains("private a", $groovy);
+        $this->assertContains("private def a", $groovy);
         $this->assertNOtContains(";", $groovy);
     }
     
@@ -92,7 +92,7 @@ class GroovyTest extends TestCase
 }";
 
         $groovy = $this->parse($code);
-        $this->assertContains("private a", $groovy);
+        $this->assertContains("private def a", $groovy);
         $this->assertNOtContains(";", $groovy);
     }
     
@@ -1333,6 +1333,10 @@ class B {
     {
         $code = "trait A 
 {
+    private \$x;
+    protected \$y;
+    public \$z;
+    
     protected function a(){
         return 0;
     }
@@ -1348,11 +1352,14 @@ class B {
 }
 ";
         $groovy = $this->parse($code);
+        $this->assertContains("private def x", $groovy);
+        $this->assertContains("def y", $groovy);
+        $this->assertContains("def z", $groovy);
         $this->assertContains("def a()", $groovy);
-        $this->assertContains("def b()", $groovy);
+        $this->assertContains("def a()", $groovy);
+        $this->assertContains("private def b()", $groovy);
         $this->assertContains("static def c()", $groovy);
         $this->assertNotContains("protected", $groovy);
-        $this->assertNotContains("private", $groovy);
     }
     
     //unwanted
