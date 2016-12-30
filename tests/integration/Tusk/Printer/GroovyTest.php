@@ -1,6 +1,6 @@
 <?php
 
-use PHPUnit\Framework\TestCase;
+require_once __DIR__ .'/TestCase.php';
 
 /**
  * Tests the tusk printer.
@@ -8,21 +8,6 @@ use PHPUnit\Framework\TestCase;
  */
 class GroovyTest extends TestCase
 {
-    /**
-     * @var Tusk\Tusk
-     */
-    private $tusk;
-    
-    /**
-     * @var \Tusk\Configuration
-     */
-    private $config;
-
-    protected function setUp()
-    {
-        $this->config = new \Tusk\Configuration();
-        $this->tusk = new Tusk\Tusk($this->config);
-    }
 
     public function testClassConstString()
     {
@@ -2044,22 +2029,5 @@ class Factory {
         $this->assertNotContains("this.class.classLoader.loadClass", $groovy);
         $this->assertContains("new A", $groovy);
     }
-    
-    /**
-     * @param string $code without leading <?php 
-     * @return string
-     */
-    private function parse(string $code): string
-    {
-        $state = new Tusk\State('test');
-        return $this->tusk->toGroovy(
-            $this->tusk->getStatements("<?php " . $code, $state),
-            $state
-        );
-    }
 
-    private function normalizeInvisibleChars(string $str) : string
-    {
-        return  str_replace(PHP_EOL, "",  str_replace("\t", "", str_replace(" ", "", $str)));
-    }
 }

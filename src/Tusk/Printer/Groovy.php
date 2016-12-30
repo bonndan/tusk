@@ -674,7 +674,8 @@ class Groovy extends Standard
     public function pExpr_MethodCall(MethodCall $node)
     {
         //TODO Undefined property: PhpParser\Node\Expr\New_::$name
-        $buffer = ($node->var->name == 'this') ? '' : $this->pDereferenceLhs($node->var) . '.';
+        $buffer = (isset($node->var->name) && $node->var->name == 'this') ? '' : $this->pDereferenceLhs($node->var) . '.';
+        
         return $buffer . $this->pObjectProperty($node->name)
             . '(' . $this->pCommaSeparated($node->args) . ')';
     }
