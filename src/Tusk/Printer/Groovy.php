@@ -235,8 +235,10 @@ class Groovy extends Standard
             $buffer = (strpos($raw, '[]') !== false) ? "[]" : '';
             switch (str_replace('[]', '', $raw)) {
                 case "string": return "String" . $buffer;
+                case "bool": return "Boolean" . $buffer;
                 case "int": return "Integer" . $buffer;
                 case "array": return self::DEF;
+                case "object": return "Object";
                 case "mixed": return self::DEF;
                 default : return $this->asPackage($raw) . '';
             }
@@ -993,7 +995,7 @@ class Groovy extends Standard
     public function pExpr_Cast_Bool(Bool_ $node)
     {
         return $this->getTodo('Check casting precedence')
-            . ' (' . parent::pExpr_Cast_Bool($node) . ')';
+            . ' (' . $this->pPrefixOp('Expr_Cast_Bool', '(Boolean) ', $node->expr) . ')';
     }
 
     public function pExpr_Cast_Int(Int_ $node)
@@ -1027,6 +1029,20 @@ class Groovy extends Standard
                 $buffer[] = $var . '?true:false';
         }
         return implode(' && ', $buffer);
+    }
+    
+    public function pExpr_New(Expr\New_ $node)
+    {
+        if ($node->class instanceof Stmt\Class_) {
+            $args = $node->args ? '(' . $this->pCommaSeparated($node->args) . ')' : '';
+            return 'new ' . $this->pClassCommon($node->class, $args);
+        }
+        
+        if ($node->class instanceof Name) {
+            $args = $node->args ? '(' . $this->pCommaSeparated($node->args) . ')' : '()';
+            return 'new ' . $this->p($node->class) . $args;
+        }
+        return 'this.class.classLoader.loadClass(' .  $this->p($node->class). ', true, false )?.newInstance' . '(' . $this->pCommaSeparated($node->args) . ')';
     }
 
     private function pUseType($type)

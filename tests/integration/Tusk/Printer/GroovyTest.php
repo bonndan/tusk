@@ -651,7 +651,7 @@ class A {
     }
 }";
         $groovy = $this->parse($code);
-        $this->assertContains('void test(boolean flag)', $groovy);
+        $this->assertContains('void test(Boolean flag)', $groovy);
     }
     
     public function testScalarTypeHintOverridesParam()
@@ -921,6 +921,13 @@ class A {
         $code = "\$tmp = (array)\$x;";
         $groovy = $this->parse($code);
         $this->assertContains("tmp = x as Object[]", $groovy);
+    }
+    
+    public function testCastBoolean()
+    {
+        $code = "\$tmp = (bool)\$x;";
+        $groovy = $this->parse($code);
+        $this->assertContains("(Boolean) x", $groovy);
     }
     
     public function testUnsetNulls()
@@ -1482,7 +1489,7 @@ if (\$a = getB()) {
 \$a = (bool) \$b == true;
 ";
         $groovy = $this->parse($code);
-        $this->assertContains("((bool) b)", $groovy);
+        $this->assertContains("((Boolean) b)", $groovy);
         $this->assertNotContains("b == true", $groovy);
     }
     
@@ -1629,8 +1636,8 @@ include 'c.php';
 include_once('d.php');
 ";
         $groovy = $this->parse($code);
-        $this->assertContains('/* TODO require ', $groovy);
-        $this->assertContains('/* TODO require_once', $groovy);
+        $this->assertContains("/* TODO require 'a.php' */", $groovy);
+        $this->assertContains("/* TODO require_once", $groovy);
         $this->assertContains('/* TODO include ', $groovy);
         $this->assertContains('/* TODO include_once', $groovy);
     }
@@ -2002,6 +2009,41 @@ interface A {
         $this->assertNotContains("three = 0", $groovy);
     }
   
+    public function testNewInstanceDynamic()
+    {
+            $code = "
+namespace ABC;
+
+class Factory {
+    
+    public function make(\$className)
+    {
+        return new \$className('test');
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("this.class.classLoader.loadClass(className, true, false )?.newInstance('test')", $groovy);
+        $this->assertNotContains("new \$className", $groovy);
+    }
+    
+    public function testNewInstanceStatic()
+    {
+            $code = "
+namespace ABC;
+
+class Factory {
+    
+    public function make(\$p)
+    {
+        return new A(\$p);
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertNotContains("this.class.classLoader.loadClass", $groovy);
+        $this->assertContains("new A", $groovy);
+    }
     
     /**
      * @param string $code without leading <?php 
