@@ -245,31 +245,6 @@ class abc {
         $this->assertNotContains('namespace Test\A', $groovy);
     }
     
-    public function testForLoopNewCounter()
-    {
-        $code = '
-for ($i=0;$i<10;$i++) {
-    continue;
-}';
-
-        $groovy = $this->parse($code);
-        $this->assertContains('for (def i = 0; i < 10; i++)', $groovy);
-        $this->assertNotContains('for ($i=0;$i<10;$i++)', $groovy);
-    }
-    
-    public function testForLoopCounterInScope()
-    {
-        $code = '
-$i = 0;
-for ($i=0;$i<10;$i++) {
-    continue;
-}';
-
-        $groovy = $this->parse($code);
-        $this->assertContains('def i = 0', $groovy);
-        $this->assertContains('for (i = 0; i < 10; i++)', $groovy);
-    }
-    
     public function testForEachLoop()
     {
         $code = '
@@ -398,36 +373,7 @@ foreach ($arr as $key => $value) {
         $this->assertContains('def value = (entry in Map.Entry) ? entry.value : entry', $groovy);
         $this->assertNotContains('foreach', $groovy);
     }
-    
-    public function testForEachLoopWithKeyVarsDefined()
-    {
-        $code = '
-$key = null;
-$value = null;
-$arr = [];
-foreach ($arr as $key => $value) {
-    continue;
-}';
 
-        $groovy = $this->parse($code);
-        $this->assertContains('for (entry in arr) {', $groovy);
-        $this->assertContains('key = (entry in Map.Entry) ? entry.key : arr.indexOf(entry)', $groovy);
-        $this->assertContains('value = (entry in Map.Entry) ? entry.value : entry', $groovy);
-        $this->assertNotContains('def key = entry.key', $groovy);
-        $this->assertNotContains('def value = entry.value', $groovy);
-    }
-    
-    public function testVarAssigned()
-    {
-        $code = "
-class ABC {
-    function a(){
-        \$myArr = [];
-    }
-}"; 
-        $groovy = $this->parse($code);
-        $this->assertContains('def myArr = []', $groovy);
-    }
     
     public function testStringConcat()
     {
@@ -603,7 +549,8 @@ class A {
     }
 }";
         $groovy = $this->parse($code);
-        $this->assertContains('String test(String name, def arguments)', $groovy);
+        $this->assertContains('String test(String name, ', $groovy);
+        $this->assertContains('def arguments)', $groovy);
     }
     
     public function testParamMixedTypeDocComment()
@@ -669,24 +616,6 @@ class A {
 }";
         $groovy = $this->parse($code);
         $this->assertContains('test(String flag)', $groovy);
-    }
-    
-    public function testParamNoDef()
-    {
-        $code = "
-class A {
-    
-    /**
-     * @param bool \$flag
-     * @return void
-     */
-    public function test(string \$flag) {
-    
-        \$flag = 0;
-    }
-}";
-        $groovy = $this->parse($code);
-        $this->assertNotContains('def flag', $groovy);
     }
     
     public function testCatch()
@@ -901,6 +830,18 @@ class A {
         $this->assertContains("System.exit(1)", $groovy);
     }
     
+    public function testDieImportsException()
+    {
+        $code = "namespace A;
+class X {
+    public function x() {
+        die(1);
+    }      
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains("import org.codehaus.groovy.GroovyException", $groovy);
+    }
+    
     public function testCastArray()
     {
         $code = "\$tmp = (array)\$x;";
@@ -941,7 +882,7 @@ class A {
             }
             ";
         $groovy = $this->parse($code);
-        $this->assertContains("boolean a(boolean b)", $groovy);
+        $this->assertContains("Boolean a(Boolean b)", $groovy);
         $this->assertNotContains("bool b", $groovy);
     }
     
@@ -953,7 +894,7 @@ class A {
             }
             ";
         $groovy = $this->parse($code);
-        $this->assertContains("boolean a(String b)", $groovy);
+        $this->assertContains("Boolean a(String b)", $groovy);
         $this->assertNotContains("string", $groovy);
     }
     
@@ -1065,7 +1006,7 @@ EOT;
             };
             ";
         $groovy = $this->parse($code);
-        $this->assertContains('{ String b, int c ->', $groovy);
+        $this->assertContains('{ String b, Integer c ->', $groovy);
         $this->assertNotContains("function", $groovy);
         $this->assertNotContains("(", $groovy);
         $this->assertNotContains(")", $groovy);
@@ -1294,33 +1235,6 @@ class A extends B
         $this->assertNotContains("#", $groovy);
     }
     
-    public function testInvalidArgumentExceptionWithoutNamespace()
-    {
-        $code = "
-throw new InvalidArgumentException('test');
-";
-        $groovy = $this->parse($code);
-        $this->assertContains("IllegalArgumentException", $groovy);
-        $this->assertNotContains("InvalidArgumentException", $groovy);
-    }
-    
-    public function testInvalidArgumentExceptionInClass()
-    {
-        $code = "
-namespace A;
-
-class B {
-    function b()
-    {
-        throw new \\InvalidArgumentException('test');
-    }
-}
-";
-        $groovy = $this->parse($code);
-        $this->assertContains("IllegalArgumentException", $groovy);
-        $this->assertNotContains("InvalidArgumentException", $groovy);
-    }
-    
     public function testTraitPublicMethods()
     {
         $code = "trait A 
@@ -1352,18 +1266,6 @@ class B {
         $this->assertContains("private def b()", $groovy);
         $this->assertContains("static def c()", $groovy);
         $this->assertNotContains("protected", $groovy);
-    }
-    
-    //unwanted
-    public function _testIfExpressionEval()
-    {
-        $code = "
-if(\$a = trim(\$b))
-    echo \$a;
-";
-        $groovy = $this->parse($code);
-        $this->assertContains("if ((def a = trim(b)))", $groovy);
-        $this->assertNotContains("if (a = trim(b))", $groovy);
     }
     
     public function testReservedWordVar()
@@ -1426,36 +1328,6 @@ list(\$a, \$b) = \$data;
         $groovy = $this->parse($code);
         $this->assertContains("def(a, b) = data", $groovy);
         $this->assertContains("TODO", $groovy);
-    }
-    
-    public function testAssignVar()
-    {
-        $code = "
-class A {
-    public function a()
-    {
-        \$a = \$this->getB();
-        \$a = 0;
-    }
-}
-";
-        $groovy = $this->parse($code);
-        $this->assertContains("def a = getB()", $groovy);
-        $this->assertContains("a = 0", $groovy);
-        $this->assertNotContains("def a = 0", $groovy);
-    }
-    
-    public function testAssignInIf()
-    {
-        $code = "
-if (\$a = getB()) {
-    echo \$a;
-}
-";
-        $groovy = $this->parse($code);
-        $this->assertContains("if ((a = getB()))", $groovy);
-        $this->assertNotContains("if (def", $groovy);
-        $this->assertNotContains("if ((def", $groovy);
     }
     
     public function testRemoveSilence()
@@ -1549,6 +1421,24 @@ class A {
         $this->assertNotContains("public mixed a", $groovy);
     }
     
+    public function testReturnTypeNumericToDef()
+    {
+        $code = "
+class A {
+    /**
+     * @return numeric
+     */
+    public function a()
+    {
+        return \$this->b;
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("def a", $groovy);
+        $this->assertNotContains("numeric a", $groovy);
+    }
+    
     public function testDynamicArrayKey()
     {
         $code = "
@@ -1621,10 +1511,10 @@ include 'c.php';
 include_once('d.php');
 ";
         $groovy = $this->parse($code);
-        $this->assertContains("/* TODO require 'a.php' */", $groovy);
-        $this->assertContains("/* TODO require_once", $groovy);
-        $this->assertContains('/* TODO include ', $groovy);
-        $this->assertContains('/* TODO include_once', $groovy);
+        $this->assertContains("// TODO require 'a.php'", $groovy);
+        $this->assertContains("// TODO require_once", $groovy);
+        $this->assertContains('// TODO include ', $groovy);
+        $this->assertContains('// TODO include_once', $groovy);
     }
     
     public function testImportAlways()
@@ -1731,235 +1621,7 @@ class A {
         $this->assertNotContains("import X.Y.ZClass", $groovy);
     }
     
-    public function testScopeVarsByChildrenRemainsLocal()
-    {
-        $code = "
-namespace ABC;
 
-class A {
-    
-    public function a()
-    {
-        while (true) {
-            \$b ='c';
-        }
-    }
-}
-";
-        $groovy = $this->parse($code);
-        $this->assertContains("def b = 'c'", $groovy);
-        $this->assertNotContains("defb/", $this->normalizeInvisibleChars($groovy));
-    }
-    
-    public function testScopeVarsInConditionRemainLocal()
-    {
-        $code = "
-namespace ABC;
-
-class A {
-    
-    public function a()
-    {
-        while (\$b ='c') {
-            \$c = 1;
-            echo \$c;
-        }
-    }
-}
-";
-        $groovy = $this->parse($code);
-        $this->assertContains("b = 'c'", $groovy);
-        $this->assertNotContains("def b = 'c'", $groovy);
-    }
-    
-    public function testScopeVarsForLoopRemainLocal()
-    {
-        $code = "
-namespace ABC;
-
-class A {
-    
-    public function a()
-    {
-        for (\$i=0; \$i<2;\$i++) {
-            echo \$i;
-        }
-    }
-}
-";
-        $groovy = $this->parse($code);
-        $this->assertContains("for (def i = ", $groovy);
-    }
-    
-    public function testScopeVarsInForEachRemainLocal()
-    {
-        $code = "
-namespace ABC;
-
-class A {
-    
-    public function a()
-    {
-        if (true)
-            foreach (\$b as \$c) {
-                echo \$c;
-            }
-    }
-}
-";
-        $groovy = $this->parse($code);
-        $this->assertContains("c in b", $groovy);
-        $this->assertNotContains("def c", $groovy);
-    }
-    
-    public function testScopeVarsInForEachKVRemainLocal1()
-    {
-        $code = "
-namespace ABC;
-
-class A {
-    
-    public function a()
-    {
-        if (true) {
-            for (\$i =0; \$i <1; \$i++) {
-                echo \$i;
-            }
-        }
-        foreach (\$b as \$key => \$c) {
-            return a(\$key);
-        }
-        
-        for (\$i =0; \$i <1; \$i++) {
-            echo \$i;
-        }
-    }
-}
-";
-        $groovy = $this->parse($code);
-        $this->assertNotContains("defkeydef", $this->normalizeInvisibleChars($groovy));
-        $this->assertNotContains("defcfor", $this->normalizeInvisibleChars($groovy));
-    }
-    
-    
-    public function testScopeVarsInForRemainLocal()
-    {
-        $code = "
-namespace ABC;
-
-class A {
-    
-    public function a()
-    {
-        if (true)
-            for (\$i =0; \$i <1; \$i++) {
-                echo \$c;
-            }
-    }
-}
-";
-        $groovy = $this->parse($code);
-        $this->assertContains("def i", $groovy);
-        $this->assertNotContains("defifor", $this->normalizeInvisibleChars($groovy));
-    }
-    
-    
-    public function testScopeVarsInCatchRemainLocal()
-    {
-        $code = "
-namespace ABC;
-
-class A {
-    
-    public function a()
-    {
-        try {
-            \$b ='c';
-        }
-        catch (Exception \$ex) {
-            echo \$c;
-        }
-    }
-}
-";
-        $groovy = $this->parse($code);
-        $this->assertContains("Exception ex", $groovy);
-        $this->assertNotContains("def ex", $groovy);
-    }
-    
-    public function testScopeVarsByChildrenUsedLater()
-    {
-        $code = "
-namespace ABC;
-
-class A {
-    
-    public function a()
-    {
-        while (true) {
-            \$b ='c';
-        }
-        
-        echo \$b;
-    }
-}
-";
-        $groovy = $this->parse($code);
-        $this->assertContains("defb", $this->normalizeInvisibleChars($groovy));
-        $this->assertNotContains("def b = 'c'", $groovy);
-    }
-    
-    public function testScopeVarsByChildrenNestedScopes()
-    {
-        $code = "
-namespace ABC;
-
-class A {
-    
-    public function a()
-    {
-        if (true) {
-            switch (\$this->x) {
-                case 1: \$b ='a'; break;
-                case 2: \$b ='b'; break;
-                case 3: \$b ='c'; break;
-                case 4: \$b ='d'; break;
-                default: \$b = 0;
-            }
-            
-            echo \$b;
-        }
-        
-    }
-}
-";
-        $groovy = $this->parse($code);
-        $this->assertContains("def b", $groovy);
-        $this->assertNotContains("def b = '", $groovy);
-    }
-    
-    public function testScopeVarsByChildrenUsedBefore()
-    {
-        $code = "
-namespace ABC;
-
-class A {
-    
-    public function a()
-    {
-        \$b = 'a';
-        while (true) {
-            if (true)
-                \$b ='c';
-        }
-    }
-}
-";
-        $groovy = $this->parse($code);
-        $this->assertContains("def b = 'a'", $groovy);
-        $this->assertNotContains("def b = 'c'", $groovy);
-    }
-    
     public function testInterfaceDefaultValues()
     {
         $code = "

@@ -6,6 +6,7 @@ use PhpParser\Node;
 use PhpParser\NodeVisitorAbstract;
 use Tusk\NodeVisitor\PHP2Groovy\Implode_;
 use Tusk\NodeVisitor\PHP2Groovy\Explode_;
+use Tusk\NodeVisitor\PHP2Groovy\InArray;
 
 /**
  * Replaces native PHP with native Groovy.
@@ -24,6 +25,7 @@ class PHP2Groovy extends NodeVisitorAbstract implements InfluencingVisitor
     {
         $this->visitors[] = new Implode_();
         $this->visitors[] = new Explode_();
+        $this->visitors[] = new InArray();
     }
     
     public function enterNode(Node $node)

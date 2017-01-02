@@ -100,7 +100,7 @@ class Groovy extends Standard
 {
 
     const DEF = 'def';
-    
+
     /**
      * @var DocBlockFactory
      */
@@ -118,6 +118,12 @@ class Groovy extends Standard
             $this->logger = $this->options['logger'];
 
         $this->docblockFactory = DocBlockFactory::createInstance();
+    }
+    
+    public function prettyPrint(array $stmts)
+    {
+        $stmts = $this->addImports($stmts);
+        return parent::prettyPrint($stmts);
     }
 
     public function pStmt_ClassConst(ClassConst $node)
@@ -206,7 +212,7 @@ class Groovy extends Standard
                 return $buffer . $this->getType($tags[0]) . ' ' . $this->p($node->props[0]) . PHP_EOL;
             }
         }
-        
+
         if (empty($buffer) || $node->getAttribute(Scope::VAR_DEFINITION))
             $buffer .= self::DEF . ' ';
         return $buffer . $this->pCommaSeparated($node->props) . PHP_EOL;
@@ -227,24 +233,35 @@ class Groovy extends Standard
          */
         if ($typeObject instanceof Var_ || $typeObject instanceof Param || $typeObject instanceof Return_
         ) {
-
             $raw = (string) $typeObject->getType();
             if (strpos($raw, '|') !== false)
                 return self::DEF;
 
             $buffer = (strpos($raw, '[]') !== false) ? "[]" : '';
-            switch (str_replace('[]', '', $raw)) {
-                case "string": return "String" . $buffer;
-                case "bool": return "Boolean" . $buffer;
-                case "int": return "Integer" . $buffer;
-                case "array": return self::DEF;
-                case "object": return "Object";
-                case "mixed": return self::DEF;
-                default : return $this->asPackage($raw) . '';
-            }
+            $type = $this->getTypeFromString(str_replace('[]', '', $raw));
+            return $type.$buffer;
+        }
+
+        if (is_string($typeObject)) {
+            return $this->getTypeFromString($typeObject);
         }
 
         return '';
+    }
+
+    private function getTypeFromString(string $s)
+    {
+        switch ($s) {
+            case "string": return "String";
+            case "bool": return "Boolean";
+            case "int": return "Integer";
+            case "array": return $this->getTodo('Collection|Map') . ' ' . self::DEF;
+            case "object": return "Object";
+            case "type":
+            case "numeric":
+            case "mixed": return self::DEF;
+            default : return $this->asPackage($s) . '';
+        }
     }
 
     /**
@@ -277,16 +294,10 @@ class Groovy extends Standard
 
     /**
      * @todo namespace edge cases
-     * @todo import working only if namespace present
      */
     public function pStmt_Namespace(Namespace_ $node)
     {
         $buffer = 'package ' . self::asPackage($this->p($node->name)) . PHP_EOL . PHP_EOL;
-
-        foreach ($this->getState()->getImports() as $import) {
-            $buffer .= $this->import(null, $import);
-        }
-
         $buffer .= $this->pStmts($node->stmts, false);
         return $buffer;
     }
@@ -304,7 +315,7 @@ class Groovy extends Standard
 
     public function pExpr_Include(Expr\Include_ $node)
     {
-        return $this->getTodo(parent::pExpr_Include($node));
+        return '// TODO ' . (parent::pExpr_Include($node));
     }
 
     public function pExpr_ErrorSuppress(Expr\ErrorSuppress $node)
@@ -396,12 +407,12 @@ class Groovy extends Standard
         return $buffer;
     }
 
-    private function addScopeDefs(Node $node) 
+    private function addScopeDefs(Node $node)
     {
         $scope = Scope::of($node);
         if (!$scope)
             return;
-        
+
         foreach ($scope->getVarsIntroducedByChildScopes() as $def => $subscope) {
             if ($scope->hasVar($def)) {
                 $var = new Variable('def ' . $def);
@@ -410,7 +421,7 @@ class Groovy extends Standard
             }
         }
     }
-    
+
     /**
      * Removing "$" and by-ref from params.
      * 
@@ -419,7 +430,7 @@ class Groovy extends Standard
      */
     public function pParam(Param2 $node)
     {
-        return ($node->type ? $this->pType($node->type) . ' ' : self::DEF . ' ')
+        return ($node->type ? $this->getType($node->type) . ' ' : self::DEF . ' ')
             . ($node->variadic ? '...' : '')
             . $node->name
             . ($node->default ? ' = ' . $this->p($node->default) : '');
@@ -427,18 +438,9 @@ class Groovy extends Standard
 
     protected function pType($node)
     {
-        if (is_string($node)) {
-            if ($node == 'bool')
-                return 'boolean';
-            if ($node == 'string')
-                return 'String';
-            if ($node == 'type') //bad doc comment
-                return self::DEF;
-            if ($node == 'array') /* @todo losing info here */
-                return $this->getTodo('Collection|Map') . ' ' . self::DEF;
-
-            return $node;
-        }
+        $type = $this->getType($node);
+        if ($type)
+            return $type;
 
         return $this->p($node);
     }
@@ -470,10 +472,10 @@ class Groovy extends Standard
         if (!$isDefinition) {
             return parent::pExpr_Assign($node);
         }
-        
+
         $scope = Scope::of($node->var);
         if ($scope == null) {
-            throw new \RuntimeException('node ' . $node->var->name . ' ' . $node->getType() . ' has no scope  on line ' .$node->getLine());
+            throw new \RuntimeException('node ' . $node->var->name . ' ' . $node->getType() . ' has no scope  on line ' . $node->getLine());
         }
         /*
          * check if the parent scope knows the var
@@ -531,6 +533,23 @@ class Groovy extends Standard
             return $result;
         }
     }
+    
+    private function addImports(array $nodes) : array
+    {
+        $buffer = [];
+        foreach ($this->getState()->getImports() as $import) {
+            $buffer[]= new \PhpParser\Node\Stmt\UseUse(new Name($import));
+        }
+        reset($nodes);
+        $node = current($nodes);
+        if ($node instanceof Namespace_) {
+            $node->stmts = array_merge($buffer, $node->stmts);
+        } else {
+            $nodes = array_merge($buffer, $nodes);
+        }
+        
+        return $nodes;
+    }
 
     public function pStmt_For(For_ $node)
     {
@@ -549,13 +568,13 @@ class Groovy extends Standard
                 $valueVar .= '_';
             }
             $keyHandling = "\n" .
-                "    " . ($node->keyVar->getAttribute(Scope::VAR_DEFINITION) ? self::DEF . ' ': '')
+                "    " . ($node->keyVar->getAttribute(Scope::VAR_DEFINITION) ? self::DEF . ' ' : '')
                 . $this->p($node->keyVar) . " = (" . $valueVar . " in Map.Entry) ? $valueVar.key : " . $this->p($node->expr) . ".indexOf($valueVar) "
                 . $this->getTodo("unefficient") . "\n" .
-                "    " . ($node->keyVar->getAttribute(Scope::VAR_DEFINITION) ? self::DEF . ' ': '')
+                "    " . ($node->keyVar->getAttribute(Scope::VAR_DEFINITION) ? self::DEF . ' ' : '')
                 . $this->p($node->valueVar) . " = (" . $valueVar . " in Map.Entry) ? " . $valueVar . ".value : $valueVar\n";
         }
-        
+
         $var = new Variable($valueVar);
         $scope->addVar($var);
 
@@ -675,7 +694,7 @@ class Groovy extends Standard
     {
         //TODO Undefined property: PhpParser\Node\Expr\New_::$name
         $buffer = (isset($node->var->name) && $node->var->name == 'this') ? '' : $this->pDereferenceLhs($node->var) . '.';
-        
+
         return $buffer . $this->pObjectProperty($node->name)
             . '(' . $this->pCommaSeparated($node->args) . ')';
     }
@@ -722,7 +741,6 @@ class Groovy extends Standard
             $buffer .= ' as ' . $alias;
         }
         return $buffer . PHP_EOL;
-        ;
     }
 
     /**
@@ -961,7 +979,7 @@ class Groovy extends Standard
         } else {
             $cond = $this->p($node->cond);
         }
-        
+
         $this->addScopeDefs($node);
 
         return 'if (' . $cond . ') {'
@@ -1031,19 +1049,19 @@ class Groovy extends Standard
         }
         return implode(' && ', $buffer);
     }
-    
+
     public function pExpr_New(Expr\New_ $node)
     {
         if ($node->class instanceof Stmt\Class_) {
             $args = $node->args ? '(' . $this->pCommaSeparated($node->args) . ')' : '';
             return 'new ' . $this->pClassCommon($node->class, $args);
         }
-        
+
         if ($node->class instanceof Name) {
             $args = $node->args ? '(' . $this->pCommaSeparated($node->args) . ')' : '()';
             return 'new ' . $this->p($node->class) . $args;
         }
-        return 'this.class.classLoader.loadClass(' .  $this->p($node->class). ', true, false )?.newInstance' . '(' . $this->pCommaSeparated($node->args) . ')';
+        return 'this.class.classLoader.loadClass(' . $this->p($node->class) . ', true, false )?.newInstance' . '(' . $this->pCommaSeparated($node->args) . ')';
     }
 
     private function pUseType($type)
