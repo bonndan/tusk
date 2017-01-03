@@ -213,8 +213,7 @@ class Groovy extends Standard
             }
         }
 
-        if (empty($buffer) || $node->getAttribute(Scope::VAR_DEFINITION))
-            $buffer .= self::DEF . ' ';
+        $buffer .= self::DEF . ' ';
         return $buffer . $this->pCommaSeparated($node->props) . PHP_EOL;
     }
 
@@ -301,7 +300,7 @@ class Groovy extends Standard
         $buffer .= $this->pStmts($node->stmts, false);
         return $buffer;
     }
-
+    
     public function pStmt_Throw(Throw_ $node)
     {
         return 'throw ' . $this->p($node->expr);

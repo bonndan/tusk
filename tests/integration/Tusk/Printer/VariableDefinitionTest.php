@@ -450,6 +450,28 @@ class A {
         $this->assertContains("defdata=[]", $this->normalizeInvisibleChars($groovy));
         $this->assertNotContains("defdata=(entry", $this->normalizeInvisibleChars($groovy));
     }
+    
+    public function testClassVarClash()
+    {
+        $code = "
+namespace ABC;
+
+class A {
+    
+    protected \$systems;
+    
+    public function test(array \$x)
+    {
+        \$systems = [];
+        foreach (\$x as \$y) {
+            \$systems[] = \$y;
+        }
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("def systems = []", $groovy);
+    }
 }
 
 

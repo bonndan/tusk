@@ -63,7 +63,7 @@ class Scope
      * @var bool
      */
     private $debug = false;
-    
+
     /**
      * Returns the scope of the node.
      * 
@@ -118,6 +118,21 @@ class Scope
         return $name;
     }
 
+    /**
+     * Checks if one of the parents is in a condition.
+     * 
+     * @param NodeAbstract $node
+     * @return bool
+     */
+    protected function isCondition(NodeAbstract $node): bool
+    {
+        $parent = \Tusk\NodeVisitor\TreeRelation::parentOf($node);
+        if (!$parent)
+            return false;
+
+        return $parent->getAttribute(Scope::CONDITION) || $this->isCondition($parent);
+    }
+
     public function addVar(NodeAbstract $node)
     {
         $node->setAttribute(Scope::SCOPE, $this);
@@ -127,11 +142,10 @@ class Scope
         }
         if (empty($name))
             return;
-        
+
         //"def" not used if variable already known or inside conditions
-        $parent = \Tusk\NodeVisitor\TreeRelation::parentOf($node);
-        $isCondition = ($parent && $parent->getAttribute(Scope::CONDITION));
-        
+        $isCondition = $this->isCondition($node);
+
         if (!$this->hasVar($node) && !$isCondition) {
             $node->setAttribute(self::VAR_DEFINITION, true);
             if (isset($this->introducedByChildScopes[$name])) {
@@ -140,9 +154,9 @@ class Scope
                     var_dump('manually introduced def ' . $name . ' into ' . $this);
             }
         }
-        
+
         if ($this->debug)
-            var_dump('Added '  . $name . ' to scope '. $this);
+            var_dump('Added ' . $name . ' to scope ' . $this);
         $this->vars[$name] = $node;
 
         $parentNode = \Tusk\NodeVisitor\TreeRelation::parentOf($node);
@@ -151,11 +165,10 @@ class Scope
                 var_dump(get_class($parentNode) . $name . ' not assigned to ' . $this);
             $this->introducedByChildScopes[$name] = $this;
         }
-        
+
         if ($this->parent && !$this->parent->hasVar($node)) {
             $this->parent->introduceVar($node);
         }
-
     }
 
     /**
@@ -171,12 +184,11 @@ class Scope
         $name = $this->getName($node);
         if ($this->debug)
             var_dump(Scope::of($node)->__toString() . ' introducing ' . $name . ' to scope ' . $this);
-        
+
         if (!array_key_exists($name, $this->introducedByChildScopes)) {
-           
+
             $this->introducedByChildScopes[$name] = Scope::of($node);
         }
-
     }
 
     /**
@@ -195,15 +207,21 @@ class Scope
 
         $name = $this->nameResolver->getFQN($node);
         $exists = isset($this->vars[$name]);
-        if (!$exists || $this->nameResolver->isProperty($name)) {
+        if (!$exists) {
             $rawName = $this->nameResolver->getLocalName($node);
             $exists = isset($this->vars[$rawName]);
         }
 
-        if ($exists)
+        if ($exists) {
             return true;
+        }
 
-        return $this->parent && $this->parent->hasVar($node);
+        if ($this->parent) {
+            $isClassScope = $this->parent->scopeRoot == null;
+            return !$isClassScope && $this->parent->hasVar($node);
+        }
+        
+        return false;
     }
 
     /**
@@ -218,10 +236,10 @@ class Scope
 
     public function __toString()
     {
-        if (!isset($this->scopeRoot) )
+        if (!isset($this->scopeRoot))
             return "root scope";
-        
-        return  $this->scopeRoot->getType() . ' on line ' . $this->scopeRoot->getLine();
+
+        return $this->scopeRoot->getType() . ' on line ' . $this->scopeRoot->getLine();
     }
 
     /**

@@ -24,7 +24,7 @@ class NameResolver
     public function getFQN(\PhpParser\Node $node): string
     {
         if ($node instanceof \PhpParser\Node\Stmt\Property) {
-            return $node->props[0]->name;
+            return 'this.'.$node->props[0]->name;
         }
 
         $name = $this->getLocalName($node);
@@ -45,10 +45,4 @@ class NameResolver
         if ($node instanceof \PhpParser\Node\Scalar\String_)
             return $node->value;
     }
-
-    public function isProperty(string $name)
-    {
-        return strpos($name, 'this') !== false;
-    }
-
 }
