@@ -570,8 +570,8 @@ class Groovy extends Standard
             $keyHandling = "\n" .
                 "    " . ($node->keyVar->getAttribute(Scope::VAR_DEFINITION) ? self::DEF . ' ' : '')
                 . $this->p($node->keyVar) . " = (" . $valueVar . " in Map.Entry) ? $valueVar.key : " . $this->p($node->expr) . ".indexOf($valueVar) "
-                . $this->getTodo("unefficient") . "\n" .
-                "    " . ($node->keyVar->getAttribute(Scope::VAR_DEFINITION) ? self::DEF . ' ' : '')
+                . $this->getTodo("unefficient") . "\n";
+            $keyHandling .= "    " . ($node->valueVar->getAttribute(Scope::VAR_DEFINITION) ? self::DEF . ' ' : '')
                 . $this->p($node->valueVar) . " = (" . $valueVar . " in Map.Entry) ? " . $valueVar . ".value : $valueVar\n";
         }
 

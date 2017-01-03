@@ -374,7 +374,10 @@ class A {
         $this->assertNotContains("def b = 'c'", $groovy);
     }
 
-    public function testDataEdgeCase()
+    /**
+     * "def data" must not appear twice (not again in if-isset branch)
+     */
+    public function testEdgeCaseDeeperSubscopeDef()
     {
         $code = "
 namespace ABC;
@@ -413,6 +416,40 @@ class A {
         $this->assertNotContains("defdatadefinjuries", $this->normalizeInvisibleChars($groovy));
     }
     
+    /**
+     * "def data" must not appear within foreach loop
+     */
+    public function testEdgeCaseForeach()
+    {
+        $code = "
+namespace ABC;
+
+class A {
+    
+    public function xxx(array \$teamIDs)
+    {
+        if (empty(\$teamIDs)) {
+            return false;
+        }
+
+        \$data = array();
+        \$tmp = \$this->getPlayer('teamID IN (' . implode(',', \$teamIDs) . ')', array('fields' => array('name')));
+        if (!empty(\$tmp)) {
+            foreach (\$tmp as \$playerID => \$data) {
+                \$names[\$playerID] = \$this->decodeName(\$data['name']);
+            }
+
+            return \$names;
+        }
+
+        return false;
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("defdata=[]", $this->normalizeInvisibleChars($groovy));
+        $this->assertNotContains("defdata=(entry", $this->normalizeInvisibleChars($groovy));
+    }
 }
 
 
