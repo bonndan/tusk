@@ -177,6 +177,7 @@ class Tusk
         $traverser->addVisitor(new NodeVisitor\Imports($state, $this->config));
         $traverser->addVisitor(new NodeVisitor\InterfaceDefaultValues());
         $traverser->addVisitor(new NodeVisitor\DieException($state));
+        $traverser->addVisitor(new NodeVisitor\PHP2Groovy\SwitchLastCaseBreak());
         $traverser->addVisitor(new NodeVisitor\PHP2Groovy());
         return $traverser->traverse($stmts);
     }

@@ -1692,4 +1692,23 @@ class Factory {
         $this->assertContains("new A", $groovy);
     }
 
+    public function testSwitchUnbrokenCase()
+    {
+            $code = "
+namespace ABC;
+
+class X {
+    
+    public function test(\$p)
+    {
+        switch (\$p) {
+            case 1: return;
+            case 2: 
+        }
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("case2:break", $this->normalizeInvisibleChars($groovy));
+    }
 }
