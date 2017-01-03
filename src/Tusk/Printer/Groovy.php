@@ -414,7 +414,7 @@ class Groovy extends Standard
             return;
 
         foreach ($scope->getVarsIntroducedByChildScopes() as $def => $subscope) {
-            if ($scope->hasVar($def)) {
+            if ($scope->hasVar($def) && !$scope->getParent()->hasVar($def)) {
                 $var = new Variable('def ' . $def);
                 $var->setDocComment(new Doc('/* ' . $def . ' introduced in subscope ' . $subscope . '*/'));
                 array_unshift($node->stmts, $var);

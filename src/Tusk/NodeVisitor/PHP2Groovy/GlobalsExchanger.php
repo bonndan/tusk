@@ -1,6 +1,6 @@
 <?php
 
-namespace Tusk\NodeVisitor;
+namespace Tusk\NodeVisitor\PHP2Groovy;
 
 /**
  * Modifies access to 
@@ -18,7 +18,7 @@ namespace Tusk\NodeVisitor;
  * 
  * @todo distinguish between url and body param (mostly GET, POST)
  */
-class GlobalsExchanger extends Literal
+class GlobalsExchanger extends \Tusk\NodeVisitor\Literal
 {
     private $mapping = [
         'GLOBALS' => '/* TODO use a static Globals map */  Globals.get("XXX")',
@@ -41,6 +41,10 @@ class GlobalsExchanger extends Literal
         
         if (array_key_exists($node->name, $this->mapping)) {
             $node->setAttribute(self::REPLACEMENT, $this->mapping[$node->name]);
+            
+            if (strpos($this->mapping[$node->name], 'HttpServletRequest') !== false) {
+                $this->state->addImport("javax.servlet.http.HttpServletRequest");
+            }
         }
     }
 

@@ -2,14 +2,12 @@
 
 namespace Tusk\NodeVisitor;
 
-use PhpParser\NodeVisitorAbstract;
-
 /**
  * Base class for visitors introducing replacements.
  * 
  * 
  */
-abstract class Literal extends NodeVisitorAbstract implements InfluencingVisitor
+abstract class Literal extends StatefulVisitor implements InfluencingVisitor
 {
      const REPLACEMENT = 'replacement';
 }

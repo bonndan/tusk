@@ -374,4 +374,47 @@ class A {
         $this->assertNotContains("def b = 'c'", $groovy);
     }
 
+    public function testDataEdgeCase()
+    {
+        $code = "
+namespace ABC;
+
+class A {
+    
+    public function xxx(string \$sqlWhere = 'teamID = 0', array \$params = array(), bool \$associate = true)
+    {
+        \$sql = array(
+            'query' => 'SELECT p.playerID',
+            'playerTable' => 'Players',
+            'join' => '',
+            'groupBy' => (isset(\$params['groupBy']) ? \$params['groupBy'] : array('playerID+')),
+            'orderBy' => (isset(\$params['orderBy']) ? \$params['orderBy'] : ''),
+        );
+     
+        if (true === \$associate) {
+            \$data = \$this->getDB()->queryGrouped(\$sql['groupBy'], \$sql['query']);
+        } else {
+            \$data = \$this->getDB()->queryArray(\$sql['query']);
+        }
+        
+        if (isset(\$params['injuryDetail']) && true === \$params['injuryDetail']) {
+            \$injuries = \Controller::getInjuries();
+            foreach (\$data as \$row) {
+                \$row['injury'] = \$row['injuryID'] ? \$injuries->get(\$row['injuryID'])['translation_key'] : null;
+            } 
+        }
+        
+        return \$data;
+    }
 }
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("defdatadefsql", $this->normalizeInvisibleChars($groovy));
+        $this->assertNotContains("defdatadefinjuries", $this->normalizeInvisibleChars($groovy));
+    }
+    
+}
+
+
+
+

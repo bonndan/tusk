@@ -172,8 +172,8 @@ class Tusk
         $traverser->addVisitor(new NodeVisitor\ReservedWords());
         $traverser->addVisitor(new NodeVisitor\VariableDefinition());
         $traverser->addVisitor(new NodeVisitor\NestedLoop());
-        $traverser->addVisitor(new NodeVisitor\GlobalsExchanger());
-        $traverser->addVisitor(new NodeVisitor\ServerVars());
+        $traverser->addVisitor(new NodeVisitor\PHP2Groovy\GlobalsExchanger($state));
+        $traverser->addVisitor(new NodeVisitor\PHP2Groovy\ServerVars($state));
         $traverser->addVisitor(new NodeVisitor\Imports($state, $this->config));
         $traverser->addVisitor(new NodeVisitor\InterfaceDefaultValues());
         $traverser->addVisitor(new NodeVisitor\DieException($state));

@@ -1,13 +1,19 @@
 <?php
 
-namespace Tusk\NodeVisitor;
+namespace Tusk\NodeVisitor\PHP2Groovy;
+
+use PhpParser\Node;
+use PhpParser\Node\Expr\ArrayDimFetch;
+use PhpParser\Node\Expr\Variable;
+use Tusk\NodeVisitor\Literal;
+use Tusk\NodeVisitor\TreeRelation;
 
 /**
  * Attempts to translate access to $_SERVER vars.
  *
  * 
  */
-class ServerVars extends Literal implements InfluencingVisitor
+class ServerVars extends Literal
 {
 
     private static $serverVars = [
@@ -53,16 +59,16 @@ class ServerVars extends Literal implements InfluencingVisitor
         'ORIG_PATH_INFO' => '/* TODO ORIG_PATH_INFO */ ""'
     ];
 
-    public function enterNode(\PhpParser\Node $node)
+    public function enterNode(Node $node)
     {
-        if (!$node instanceof \PhpParser\Node\Expr\Variable)
+        if (!$node instanceof Variable)
             return;
 
         if (!is_string($node->name) || $node->name != '_SERVER')
             return;
         
         $parent = $node->getAttribute(TreeRelation::PARENT);
-        if (!$parent instanceof \PhpParser\Node\Expr\ArrayDimFetch)
+        if (!$parent instanceof ArrayDimFetch)
             return;
         
         if (!isset($parent->dim->value))

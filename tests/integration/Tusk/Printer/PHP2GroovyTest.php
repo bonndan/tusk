@@ -74,4 +74,17 @@ class B {
         $this->assertContains("IllegalArgumentException", $groovy);
         $this->assertNotContains("InvalidArgumentException", $groovy);
     }
+    
+    public function testSessionAccessAddsImport()
+    {
+        $code = "class A {
+    
+    function a()
+    {
+        return \$_SESSION['x'];
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains("import javax.servlet.http.HttpServletRequest", $groovy);
+    }
 }
