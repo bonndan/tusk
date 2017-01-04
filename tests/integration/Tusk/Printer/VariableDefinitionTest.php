@@ -472,8 +472,32 @@ class A {
         $groovy = $this->parse($code);
         $this->assertContains("def systems = []", $groovy);
     }
+    
+    public function testNoDefInCondition()
+    {
+        $code = "
+namespace ABC;
+
+class A {
+    
+    private static \$shortNames;
+    
+    private static function init(\$data)
+    {
+        if (empty(\$data['u']) || empty(\$data['t']) || !\$this->checkChangeToken(\$data['u'], \$data['t'])) {
+            \$err = 'tokenInvalid';
+        }
+
+        if (!\$err && true !== \$err2 = \Controller::getFormManager()->validatePassword(\$data['p1'])) {
+            \$err = \$err2;
+        }
+
+    }
 }
-
-
-
+";
+        $groovy = $this->parse($code);
+        $this->assertNotContains("def err2", $groovy);
+    }
+ 
+}
 

@@ -43,8 +43,14 @@ class VariableDefinition extends NodeVisitorAbstract
                 }
             }
         
-            if (isset($node->cond) && $node->cond instanceof Assign) {
-                $node->cond->setAttribute(Scope::CONDITION, true);
+            if (isset($node->cond)) {
+                if (is_array($node->cond)) {
+                    foreach ($node->cond as $cond) {
+                        $cond->setAttribute(Scope::CONDITION, true);
+                    }
+                } else {
+                    $node->cond->setAttribute(Scope::CONDITION, true);
+                }
             }
             
             if (isset($node->init) && $node->init[0] instanceof Assign) {
