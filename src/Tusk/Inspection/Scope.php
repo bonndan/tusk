@@ -105,6 +105,15 @@ class Scope
 
         $this->scopeRoot = $root;
         $root->setAttribute(self::SCOPE, $this);
+
+        /*
+         * Because of traversal If_ is added like a parent to Else_, here
+         * we fix this by setting the parent scope of If_'s parent.
+         */
+        if (!$parent->scopeRoot instanceof If_)
+            return;
+        if ($root instanceof Else_ || $root instanceof ElseIf_)
+            $this->parent = $parent->parent;
     }
 
     private function getName(NodeAbstract $node): string
@@ -220,7 +229,7 @@ class Scope
             $isClassScope = $this->parent->scopeRoot == null;
             return !$isClassScope && $this->parent->hasVar($node);
         }
-        
+
         return false;
     }
 

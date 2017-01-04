@@ -227,11 +227,8 @@ class Groovy extends Standard
             return "String";
         }
 
-        /**
-         * @todo support key-value type annotation which is supported by phpdocumentor
-         */
-        if ($typeObject instanceof Var_ || $typeObject instanceof Param || $typeObject instanceof Return_
-        ) {
+  
+        if ($typeObject instanceof Var_ || $typeObject instanceof Param || $typeObject instanceof Return_) {
             $raw = (string) $typeObject->getType();
             if (strpos($raw, '|') !== false)
                 return self::DEF;
@@ -256,10 +253,15 @@ class Groovy extends Standard
             case "int": return "Integer";
             case "array": return $this->getTodo('Collection|Map') . ' ' . self::DEF;
             case "object": return "Object";
+            case "void": return "void";
             case "type":
             case "numeric":
             case "mixed": return self::DEF;
-            default : return $this->asPackage($s) . '';
+            default : 
+                if (ctype_upper($s[0]) || $s[0]  == "\\")
+                    return $this->asPackage($s) . '';
+                else
+                    return self::DEF;
         }
     }
 
@@ -548,6 +550,14 @@ class Groovy extends Standard
         }
         
         return $nodes;
+    }
+    
+    public function pStmt_Do(Stmt\Do_ $node)
+    {
+        
+        return '/* was do...while */\nfor (;;) {' . $this->pStmts($node->stmts) . "\n"
+            . ' if (!(' . $this->p($node->cond) . '))'  . "\nbreak\n"
+             . '}';
     }
 
     public function pStmt_For(For_ $node)

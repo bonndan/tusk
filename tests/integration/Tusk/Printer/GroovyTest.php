@@ -570,6 +570,23 @@ class A {
         $this->assertContains('String test(def name)', $groovy);
     }
     
+    public function testParamTypeDocCommentReturnLowerCaseString()
+    {
+        $code = "
+class A {
+    
+    /**
+     * @return relative path
+     */
+    public function test() {
+        return 'test';
+    }
+}";
+        $groovy = $this->parse($code);
+        $this->assertContains('def test', $groovy);
+        $this->assertNotContains('return test(', $groovy);
+    }
+    
     public function testParamTypeDocComment2()
     {
         $code = "
@@ -1711,4 +1728,19 @@ class X {
         $groovy = $this->parse($code);
         $this->assertContains("case2:break", $this->normalizeInvisibleChars($groovy));
     }
+    
+    public function testDoWhile()
+    {
+        $code = "
+do {
+    echo 'a';
+} while (\$x > 0);
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("for (;;)", $groovy);
+        $this->assertContains("if (!(x > 0)", $groovy);
+        $this->assertNotContains("do {", $groovy);
+        $this->assertNotContains("while (", $groovy);
+    }
+    
 }

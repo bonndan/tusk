@@ -499,5 +499,29 @@ class A {
         $this->assertNotContains("def err2", $groovy);
     }
  
+       
+    public function testDefOnlyIf()
+    {
+        $code = "
+namespace ABC;
+
+class A {
+    
+    private static \$shortNames;
+    
+    private static function init()
+    {
+        if (isset(self::\$shortNames[strtolower(\$cls)])) {
+            \$className = self::\$shortNames[strtolower(\$cls)];
+        } else {
+            \$className = '';
+        }
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("def className = shortNames[", $groovy);
+        $this->assertContains("def className = ''", $groovy);
+    }
 }
 
