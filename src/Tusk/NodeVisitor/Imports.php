@@ -8,7 +8,6 @@ use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Expr\StaticPropertyFetch;
 use PhpParser\Node\Name;
 use PhpParser\Node\Param;
-use PhpParser\Node\Stmt\Use_;
 use Tusk\Configuration;
 use Tusk\State;
 
@@ -52,6 +51,12 @@ class Imports extends StatefulVisitor
         
         if ($node instanceof Node\Expr\New_ && $node->class instanceof Name) {
             $name = (string)$node->class;
+            if (!$this->state->isUsed($name))
+                $this->handleName($name);
+        }
+        
+        if ($node instanceof Node\Stmt\ClassMethod) {
+            $name = (string)$node->returnType;
             if (!$this->state->isUsed($name))
                 $this->handleName($name);
         }

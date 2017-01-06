@@ -1720,6 +1720,24 @@ class A {
         $this->assertContains("import X.Y.ZClass", $groovy);
     }
 
+    public function testImportOnDemandReturnType()
+    {
+        $code = "
+namespace ABC;
+
+class A extends B {
+    
+    public function a() : TestClass
+    {
+        return \$this->t;
+    }
+}
+";
+        $this->config->onDemandImport['TestClass'] = 'X.Y.ZClass';
+        $groovy = $this->parse($code);
+        $this->assertContains("import X.Y.ZClass", $groovy);
+    }
+    
     public function testInterfaceDefaultValues()
     {
         $code = "

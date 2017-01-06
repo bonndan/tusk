@@ -782,7 +782,7 @@ class Groovy extends Standard
             $this->getState()->addUse($alias);
             $buffer .= ' as ' . $alias;
         }
-        return $buffer . PHP_EOL;
+        return $buffer;
     }
 
     /**
