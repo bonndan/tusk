@@ -36,12 +36,7 @@ Groovy outuput
 * PHP built-in functions need to be rewritten in Java or Groovy or replaced with equivalents.
 * garbage like "goto"
 * fancy stuff like yield, destructors, magic methods and constants
-
-
-## Errors / TODO
-
 * casting precedence of objects (non-scalar) not regarded yet
 * use eachwithindex if loop does not contain: break, continue, return
 * prevent useless casting: if ((int) id > 0) where id is already int
 * simplify boolean comparison: "false==" or "true=="
-* handle var definition in conditional paths
