@@ -27,8 +27,10 @@ class Reflection extends NodeVisitorAbstract implements InfluencingVisitor
 
     private function handleReflectionClass(\PhpParser\Node $node)
     {
+        $val = $node->args[0]->value;
+        $name = ($val instanceof \PhpParser\Node\Expr\Variable) ? $val->name : $val->value;
         return new \PhpParser\Node\Expr\StaticPropertyFetch(
-            new \PhpParser\Node\Name((string) $node->args[0]->value->value), 
+            new \PhpParser\Node\Name((string) $name), 
             'metaClass'
         );
     }

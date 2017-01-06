@@ -1702,6 +1702,23 @@ class A {
         $this->assertNotContains("import X.Y.ZClass", $groovy);
     }
     
+    public function testImportOnDemandNewClass()
+    {
+        $code = "
+namespace ABC;
+
+class A {
+    
+    public function a()
+    {
+        return new TestClass();
+    }
+}
+";
+        $this->config->onDemandImport['TestClass'] = 'X.Y.ZClass';
+        $groovy = $this->parse($code);
+        $this->assertContains("import X.Y.ZClass", $groovy);
+    }
 
     public function testInterfaceDefaultValues()
     {

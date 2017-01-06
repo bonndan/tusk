@@ -50,6 +50,12 @@ class Imports extends StatefulVisitor
                 $this->handleName($name);
         }
         
+        if ($node instanceof Node\Expr\New_ && $node->class instanceof Name) {
+            $name = (string)$node->class;
+            if (!$this->state->isUsed($name))
+                $this->handleName($name);
+        }
+        
         /*
          * use statements aliases need to be registered. otherwise unwanted
          * imports might appear
