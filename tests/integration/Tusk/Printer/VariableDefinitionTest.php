@@ -523,5 +523,50 @@ class A {
         $this->assertContains("def className = shortNames[", $groovy);
         $this->assertContains("def className = ''", $groovy);
     }
+    
+    public function testDefIfFollowedByAssign()
+    {
+        $code = "
+namespace ABC;
+
+class A {
+    
+    private static \$shortNames;
+    
+    private static function init()
+    {
+        if (isset(self::\$shortNames[strtolower(\$cls)])) {
+            \$className = self::\$shortNames[strtolower(\$cls)];
+        } else {
+            \$className = '';
+        }
+        
+        \$className = 'Y';
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("def className", $groovy);
+        $this->assertNotContains("def className = shortNames[", $groovy);
+        $this->assertNotContains("def className = ''", $groovy);
+        $this->assertNotContains("def className = 'Y'", $groovy);
+    }
+    
+    public function testDefNotInMethodCall()
+    {
+        $code = "
+namespace ABC;
+class A {
+    
+    private function x(\$action)
+    {
+        \$views = Controller::config('views');
+        \$realAction = inArr(\$view = strtolower(\$action), \$views) ? \$views[\$view]['action'] : false;
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertNotContains("def view =", $groovy);
+    }
 }
 

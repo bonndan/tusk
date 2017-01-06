@@ -3,7 +3,8 @@
 namespace Tusk\NodeVisitor\PHP2Groovy;
 
 /**
- * Description of NodeExchanger
+ * Simple version of NodeVisitor. Exchanges nodes if something needs to be replaced.
+ * 
  *
  */
 interface NodeExchanger

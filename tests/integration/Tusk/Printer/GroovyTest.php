@@ -328,6 +328,26 @@ for ($a =1; $a < 2; $a++) {
         $this->assertContains('continue loop1', $groovy);
     }
     
+    public function testForEachLoopConflictingValueVar()
+    {
+        $code = '
+namespace A;
+class A  {
+
+    public function test($a)
+    {
+        foreach ($this->values as $a) {
+            echo $a;
+        }
+    }
+}
+';
+
+        $groovy = $this->parse($code);
+        $this->assertContains('a_ in values', $groovy);
+        $this->assertContains('a = a_', $groovy);
+    }
+    
     public function testWhileLoopNestedContinue2()
     {
         $code = '
@@ -873,6 +893,13 @@ class X {
         $this->assertContains("(Boolean) x", $groovy);
     }
     
+    public function testCastStringLowercase()
+    {
+        $code = "\$tmp = (string)\$x;";
+        $groovy = $this->parse($code);
+        $this->assertContains("(String) x", $groovy);
+    }
+    
     public function testUnsetNulls()
     {
         $code = "unset(\$x[0], \$x[1]);";
@@ -1204,15 +1231,13 @@ class A
         $code = "
 class A extends B
 {
-    const B = 'b';
-    
     function foo()
     {
-        return [strtolower('b') => 'foo'];
+        return [xxx('b') => 'foo'];
     }
 }";
         $groovy = $this->parse($code);
-        $this->assertContains("[(strtolower('b')):", $groovy);
+        $this->assertContains("[(xxx('b')):", $groovy);
     }
     
     public function testArrayMethodCallKey()
@@ -1393,7 +1418,7 @@ list(\$a, \$b) = \$data;
 \$a = (string) \$b == 'x';
 ";
         $groovy = $this->parse($code);
-        $this->assertContains("((string) b)", $groovy);
+        $this->assertContains("((String) b)", $groovy);
         $this->assertNotContains("b == x", $groovy);
     }
     
@@ -1456,13 +1481,52 @@ class A {
         $this->assertNotContains("numeric a", $groovy);
     }
     
-    public function testDynamicArrayKey()
+    
+    public function testTypeNumericToDef()
+    {
+        $code = "
+class A {
+    /**
+     * @var numeric
+     */
+    private \$a;
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("private def a", $groovy);
+        $this->assertNotContains("numeric a", $groovy);
+    }
+    
+    public function testArrayKeyDynamic()
     {
         $code = "
 \$a = [\$b + 'something' => 'foobar'];
 ";
         $groovy = $this->parse($code);
         $this->assertContains("a = [(b + 'something'): 'foobar']", $groovy);
+    }
+    
+    public function testArrayKeySpecialChar()
+    {
+        $code = '
+$bad = array(
+    "javascript\s*:"    => "[removed]",
+    "expression\s*\("   => "[removed]", // CSS and IE
+    "Redirect\s+302"    => "[removed]",
+    \'<!--\'              => \'&lt;!--\',
+    \'-->\'               => \'--&gt;\',
+    \'<!CDATA[\'          => \'&lt;![CDATA[\',
+    \'5th\'          => 5
+);
+';
+        $groovy = $this->parse($code);
+        $this->assertContains('"javascript\s*:"', $groovy);
+        $this->assertContains('"expression\s*\("', $groovy);
+        $this->assertContains('"Redirect\s+302"', $groovy);
+        $this->assertContains('"<!--"', $groovy);
+        $this->assertContains('"-->"', $groovy);
+        $this->assertContains('"<!CDATA["', $groovy);
+        $this->assertContains('"5th"', $groovy);
     }
     
     public function testGlobalPostAccess()
@@ -1708,6 +1772,25 @@ class Factory {
         $this->assertNotContains("this.class.classLoader.loadClass", $groovy);
         $this->assertContains("new A", $groovy);
     }
+    
+    public function testNewInstanceSelf()
+    {
+            $code = "
+namespace ABC;
+
+class Factory {
+    
+    public function make(\$p)
+    {
+        return new self(\$p);
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertNotContains("new self", $groovy);
+        $this->assertNotContains("this.class.classLoader.loadClass", $groovy);
+        $this->assertContains("getClass().newInstance(p)", $groovy);
+    }
 
     public function testSwitchUnbrokenCase()
     {
@@ -1743,4 +1826,96 @@ do {
         $this->assertNotContains("while (", $groovy);
     }
     
+    public function testRemoveReference()
+    {
+        $code = "
+\$data =& \$x;
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("data = x", $groovy);
+        $this->assertNotContains("&", $groovy);
+    }
+    
+    public function testEmptyConstructorHasBody()
+    {
+        $code = "
+namespace ABC;
+
+class X {
+    
+    public function __construct()
+    {
+    }
 }
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("X(){}", $this->normalizeInvisibleChars($groovy));
+    }
+    
+    public function testMagicFunctionResolved()
+    {
+        $code = "
+namespace ABC;
+
+class X {
+    
+    public function xxx()
+    {
+        if (\$Type && method_exists(\$Type, __FUNCTION__)) {
+            return \$Type->{__FUNCTION__}(\$item, \$content);
+        }
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("'xxx'", $groovy);
+        $this->assertNotContains("__FUNCTION__", $groovy);
+    }
+    
+    public function testMagicMethodResolved()
+    {
+        $code = "
+namespace ABC;
+
+class X {
+    
+    public function xxx()
+    {
+        if (\$Type && method_exists(\$Type, __METHOD__)) {
+            return \$Type->{__METHOD__}(\$item, \$content);
+        }
+    }
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains("'xxx'", $groovy);
+        $this->assertNotContains("__METHOD__", $groovy);
+    }
+    
+    
+    public function testReplaceConst()
+    {
+        $code = "
+        \$a = DIR_SEPERATOR;
+        ";
+        $this->config->replaceNames['DIR_SEPERATOR'] = "'/'";
+        $groovy = $this->parse($code);
+        $this->assertContains("a = '/'", $groovy);
+    }
+    
+    public function testReplaceImport()
+    {
+        $code = "
+namespace A;
+use function somefunc;
+class B
+{
+}
+";
+        $this->config->replaceNames['somefunc'] = 'A.B.somefunc';
+        $groovy = $this->parse($code);
+        $this->assertContains("import static A.B.somefunc", $groovy);
+    }
+}
+
+

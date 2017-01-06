@@ -32,7 +32,9 @@ class VariableDefinition extends NodeVisitorAbstract
 
     public function enterNode(Node $node)
     {
+        // if, for, function defs ...
         if (Scope::hasOwnScope($node)) {
+
             $scope = end($this->scopes);
             $newScope = new Scope($node, $scope);
             $this->scopes[] = $newScope;
@@ -42,46 +44,65 @@ class VariableDefinition extends NodeVisitorAbstract
                     $newScope->addVar($param);
                 }
             }
-        
-            if (isset($node->cond)) {
-                if (is_array($node->cond)) {
-                    foreach ($node->cond as $cond) {
-                        $cond->setAttribute(Scope::CONDITION, true);
-                    }
-                } else {
-                    $node->cond->setAttribute(Scope::CONDITION, true);
-                }
-            }
-            
-            if (isset($node->init) && $node->init[0] instanceof Assign) {
-                $node->init[0]->setAttribute(Scope::CONDITION, true);
-            }
-            
-            if ($node instanceof Foreach_) {
-                if ($node->keyVar instanceof Variable) {
-                    $newScope->addVar($node->keyVar);
-                    //$node->keyVar->setAttribute(Scope::VAR_DEFINITION, false);
-                }
-                $node->expr->setAttribute(Scope::CONDITION, true);
-            }
-            
-            if ($node instanceof For_) {
-                if ($node->init[0] instanceof Assign) {
-                    $newScope->addVar($node->init[0]->var);
-                    //$node->init[0]->var->setAttribute(Scope::VAR_DEFINITION, false);
-                }
-            }
-            
+
+            $this->markConditions($node, $newScope);
             return;
+        }
+
+        //arguments in function call must not contain "def"
+        if ($node instanceof Node\Expr\MethodCall || $node instanceof Node\Expr\FuncCall) {
+            foreach ($node->args as $arg) {
+                $arg->setAttribute(Scope::CONDITION, true);
+            }
         }
 
         $scope = end($this->scopes); /* @var $scope Scope */
 
         if ($this->isQualified($node)) {
             $scope->addVar($node);
+        } else {
+            $scope->add($node);
         }
     }
 
+    private function markConditions(Node $node, Scope $newScope)
+    {
+        if (isset($node->cond)) {
+            if (is_array($node->cond)) {
+                foreach ($node->cond as $cond) {
+                    $cond->setAttribute(Scope::CONDITION, true);
+                }
+            } else {
+                $node->cond->setAttribute(Scope::CONDITION, true);
+            }
+        }
+
+        if (isset($node->init) && $node->init[0] instanceof Assign) {
+            $node->init[0]->setAttribute(Scope::CONDITION, true);
+        }
+
+        if ($node instanceof Foreach_) {
+            if ($node->keyVar instanceof Variable) {
+                $newScope->addVar($node->keyVar);
+                //$node->keyVar->setAttribute(Scope::VAR_DEFINITION, false);
+            }
+            $node->expr->setAttribute(Scope::CONDITION, true);
+        }
+
+        if ($node instanceof For_) {
+            if ($node->init[0] instanceof Assign) {
+                $newScope->addVar($node->init[0]->var);
+                //$node->init[0]->var->setAttribute(Scope::VAR_DEFINITION, false);
+            }
+        }
+    }
+
+    /**
+     * Does the node qualify as a variable defintion/introduction?
+     * 
+     * @param Node $node
+     * @return bool
+     */
     private function isQualified(Node $node): bool
     {
         $qualifies = $node instanceof PropertyFetch || $node instanceof Property;

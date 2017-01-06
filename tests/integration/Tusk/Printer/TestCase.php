@@ -32,7 +32,8 @@ class TestCase extends PHPUnit\Framework\TestCase
         $state = new Tusk\State('test');
         return $this->tusk->toGroovy(
             $this->tusk->getStatements("<?php " . $code, $state),
-            $state
+            $state,
+            $this->config
         );
     }
 

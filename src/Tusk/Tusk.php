@@ -64,7 +64,7 @@ class Tusk
         $state = new State($file->getFilename());
         $state->setPackage($package);
         $this->logger->addInfo("Reading $file");
-        $groovySrc = $this->toGroovy($this->getStatements($code, $state), $state);
+        $groovySrc = $this->toGroovy($this->getStatements($code, $state, $this->config), $state);
         if ($this->config->isConfigured()) {
             $target = $this->getPathForFile($groovySrc, $file);
             if (!is_dir(dirname($target))) {
@@ -149,9 +149,11 @@ class Tusk
         }
     }
 
-    public function toGroovy(array $statements, \Tusk\State $state): State
+    public function toGroovy(array $statements, \Tusk\State $state, \Tusk\Configuration $config): State
     {
-        $printer = new Printer\Groovy(['state' => $state, 'logger' => $this->logger]);
+        $printer = new Printer\Groovy(
+            ['state' => $state, 'logger' => $this->logger, 'config' => $config]
+        );
         $state->setSrc($printer->prettyPrint($statements));
         return $state;
     }
@@ -178,6 +180,7 @@ class Tusk
         $traverser->addVisitor(new NodeVisitor\InterfaceDefaultValues());
         $traverser->addVisitor(new NodeVisitor\DieException($state));
         $traverser->addVisitor(new NodeVisitor\PHP2Groovy\SwitchLastCaseBreak());
+        $traverser->addVisitor(new NodeVisitor\PHP2Groovy\Reflection());
         $traverser->addVisitor(new NodeVisitor\PHP2Groovy());
         return $traverser->traverse($stmts);
     }

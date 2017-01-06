@@ -63,6 +63,12 @@ class Scope
      * @var bool
      */
     private $debug = false;
+    
+    /**
+     * defined variables string => string
+     * @var string[]
+     */
+    private $varsDefined = [];
 
     /**
      * Returns the scope of the node.
@@ -141,10 +147,26 @@ class Scope
 
         return $parent->getAttribute(Scope::CONDITION) || $this->isCondition($parent);
     }
-
-    public function addVar(NodeAbstract $node)
+    
+    /**
+     * Assigns the scope to the given node.
+     * 
+     * @param Node $node
+     */
+    public function add(Node $node)
     {
         $node->setAttribute(Scope::SCOPE, $this);
+    }
+
+    /**
+     * Assigns the scope to the given node and registers the node as variable.
+     *  
+     * @param NodeAbstract $node
+     * @return void
+     */
+    public function addVar(NodeAbstract $node)
+    {
+        $this->add($node);
         $name = $this->getName($node);
         if (strpos($name, 'this.') !== FALSE) {
             return;
@@ -157,10 +179,10 @@ class Scope
 
         if (!$this->hasVar($node) && !$isCondition) {
             $node->setAttribute(self::VAR_DEFINITION, true);
+            if ($this->debug)
+                $node->setDocComment(new \PhpParser\Comment\Doc('manually introduced'));
             if (isset($this->introducedByChildScopes[$name])) {
                 $this->introducedByChildScopes[$name] = Scope::of($node);
-                if ($this->debug)
-                    var_dump('manually introduced def ' . $name . ' into ' . $this);
             }
         }
 
@@ -192,10 +214,9 @@ class Scope
     {
         $name = $this->getName($node);
         if ($this->debug)
-            var_dump(Scope::of($node)->__toString() . ' introducing ' . $name . ' to scope ' . $this);
+            $node->setDocComment(new \PhpParser\Comment\Doc (Scope::of($node)->__toString() . ' introducing ' . $name . ' to scope ' . $this));
 
         if (!array_key_exists($name, $this->introducedByChildScopes)) {
-
             $this->introducedByChildScopes[$name] = Scope::of($node);
         }
     }
@@ -242,6 +263,16 @@ class Scope
     {
         return $this->parent;
     }
+    
+    /**
+     * Returns the scope root node .
+     * 
+     * @return Node
+     */
+    public function getScopeRoot()
+    {
+        return $this->scopeRoot;
+    }
 
     public function __toString()
     {
@@ -259,6 +290,32 @@ class Scope
     public function getVarsIntroducedByChildScopes(): array
     {
         return $this->introducedByChildScopes;
+    }
+
+    /**
+     * Mark a variable as printed with "def" to prevent twice occurrence.
+     * 
+     * @param string|Node $var
+     */
+    public function addDefinition($var)
+    {
+        if (!is_string($var))
+            $var = $this->nameResolver->getLocalName($var);
+        
+        $this->varsDefined[$var] = $var;
+    }
+    
+    /**
+     * Returns if the variable has already been printed with "def".
+     * 
+     * @param string|Node $var
+     * @return bool
+     */
+    public function isDefined($var) : bool
+    {
+        if (!is_string($var))
+            $var = $this->nameResolver->getLocalName($var);
+        return array_key_exists($var, $this->varsDefined);
     }
 
 }

@@ -87,4 +87,37 @@ class B {
         $groovy = $this->parse($code);
         $this->assertContains("import javax.servlet.http.HttpServletRequest", $groovy);
     }
+    
+    public function testReflectionClass()
+    {
+        $code = "
+ \$a = new \ReflectionClass('X');
+            ";
+        $groovy = $this->parse($code);
+        $this->assertContains("X.metaClass", $groovy);
+    }
+    
+    public function testInstanceOfStdClass()
+    {
+        $code = "
+ \$a = \$x instanceof stdclass;
+            ";
+        $groovy = $this->parse($code);
+        $this->assertContains("instanceof Object", $groovy);
+        $this->assertNotContains("stdclass", $groovy);
+    }
+    
+    public function testStrCase()
+    {
+        $code = "
+ \$a = strtolower('A');
+ \$b = strtoupper('b');
+";
+        
+        $groovy = $this->parse($code);
+        $this->assertContains("a = 'A'.toLowerCase()", $groovy);
+        $this->assertContains("b = 'b'.toUpperCase()", $groovy);
+        $this->assertNotContains("strtolower", $groovy);
+        $this->assertNotContains("strtoupper", $groovy);
+    }
 }

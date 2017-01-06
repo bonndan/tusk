@@ -58,6 +58,15 @@ dependencies {
     
     public $onDemandImport = [];
     
+    /**
+     * string => string
+     * @var string[]
+     */
+    public $replaceNames = [
+        'stdclass' => 'Object',
+        'stdClass' => 'Object'
+    ];
+    
     public function isConfigured() : bool
     {
         return $this->source && $this->target;

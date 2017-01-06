@@ -14,6 +14,7 @@ class ReservedWords extends \PhpParser\NodeVisitorAbstract implements Influencin
 
     public static $reservedWords = [
         "abstract",
+        "as",
         "continue",
         "for",
         "new",
@@ -36,6 +37,7 @@ class ReservedWords extends \PhpParser\NodeVisitorAbstract implements Influencin
         "byte",
         "else",
         "import",
+        "in",
         "public",
         "throws",
         "case",
