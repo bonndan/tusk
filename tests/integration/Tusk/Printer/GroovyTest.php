@@ -1887,6 +1887,20 @@ class X {
         $this->assertContains("X(){}", $this->normalizeInvisibleChars($groovy));
     }
     
+    public function testInterfaceHasNoBody()
+    {
+        $code = "
+namespace ABC;
+
+interface X {
+    
+    public function a();
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertNotContains("a(){}", $this->normalizeInvisibleChars($groovy));
+    }
+    
     public function testMagicFunctionResolved()
     {
         $code = "

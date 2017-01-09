@@ -403,7 +403,10 @@ class Groovy extends Standard
         $this->addScopeDefs($node);
         
         $buffer .= '(' . $this->pCommaSeparated($node->params) . ')' . PHP_EOL;
-        $buffer .= '{' . PHP_EOL . ($node->stmts ? $this->pStmts($node->stmts) : '') . PHP_EOL . '}' . PHP_EOL;
+        
+        $parent = TreeRelation::parentOf($node);
+        if (!$parent instanceof Stmt\Interface_)
+            $buffer .= '{' . PHP_EOL . ($node->stmts ? $this->pStmts($node->stmts) : '') . PHP_EOL . '}' . PHP_EOL;
         return $buffer;
     }
 
