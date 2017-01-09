@@ -697,7 +697,14 @@ class Groovy extends Standard
         $name = self::asPackage(parent::pName($node));
 
         $replacements = $this->getConfig()->replaceNames;
-        if (array_key_exists($name, $replacements)) {
+        if (!array_key_exists($name, $replacements))
+            return $name;
+        
+        $isUsed = $this->getState()->isUsed($name);
+        $isFunc = TreeRelation::parentOf($node) instanceof FuncCall
+            ||  TreeRelation::parentOf($node) instanceof MethodCall;
+        //var_dump(get_class(TreeRelation::parentOf($node) ));
+        if (($isFunc && !$isUsed) || !$isFunc) {
             return $replacements[$name];
         }
 

@@ -1965,6 +1965,24 @@ class B
         $groovy = $this->parse($code);
         $this->assertContains("import static A.B.somefunc", $groovy);
     }
+    
+    public function testReplaceImportKeepsFunc()
+    {
+        $code = "
+namespace A;
+use function somefunc;
+class B
+{
+    function a(){
+        return somefunc();
+    }
+}
+";
+        $this->config->replaceNames['somefunc'] = 'A.B.somefunc';
+        $groovy = $this->parse($code);
+        $this->assertContains("import static A.B.somefunc", $groovy);
+        $this->assertContains("return somefunc", $groovy);
+    }
 }
 
 
