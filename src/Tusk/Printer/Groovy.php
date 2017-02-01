@@ -317,12 +317,12 @@ class Groovy extends Standard
 
     public function pExpr_Include(Expr\Include_ $node)
     {
-        return '// TODO ' . (parent::pExpr_Include($node));
+        return '/* TODO ' . (parent::pExpr_Include($node)) . ' */';
     }
 
     public function pExpr_ErrorSuppress(Expr\ErrorSuppress $node)
     {
-        return $this->pPrefixOp('Expr_ErrorSuppress', '', $node->expr);
+        return $this->p($node->expr);
     }
 
     public function pComments(array $comments)
@@ -565,8 +565,7 @@ class Groovy extends Standard
 
     public function pStmt_Do(Stmt\Do_ $node)
     {
-
-        return '/* was do...while */\nfor (;;) {' . $this->pStmts($node->stmts) . "\n"
+        return '/* was do...while */ for (;;) {' . $this->pStmts($node->stmts) . "\n"
             . ' if (!(' . $this->p($node->cond) . '))' . "\nbreak\n"
             . '}';
     }
@@ -859,13 +858,13 @@ class Groovy extends Standard
                 $key = '(' . $node->key->name . ')';
             } elseif ($node->key instanceof String_) {
                 $hasSpecialChar = function ($str) {
-                    foreach ([' ', '.', '-', ':', '<', '>', '\\'] as $chr)
+                    foreach ([' ', '.', '-', ':', '<', '>', '\\', "\n", "\r"] as $chr)
                         if (strpos($str, $chr) !== false)
                             return true;
                     if (ctype_digit($str[0]))
                         return true;
                 };
-                $key = $hasSpecialChar($node->key->value) ? '"' . $node->key->value . '"' : $node->key->value;
+                $key = $hasSpecialChar($node->key->value) ? '"' . addcslashes($node->key->value, "\n\r") . '"' : $node->key->value;
             } elseif ($node->key instanceof LNumber) {
                 $key = $node->key->value;
             } else {
@@ -934,6 +933,7 @@ class Groovy extends Standard
                 return $isMultiline ? '"""' . $escaped . '"""' : '\'' . $escaped . '\'';
 
             case String_::KIND_DOUBLE_QUOTED:
+                
                 $escaped = $this->escapeString($node->value, '"');
                 if (substr($escaped, -1) == '"')
                     $escaped .= ' '; //adding a whitespace if last char is "
@@ -965,7 +965,7 @@ class Groovy extends Standard
 
     public function pScalar_MagicConst_Dir(Dir $node)
     {
-        return $this->getTodo('__DIR__ was used') . " getClass().getProtectionDomain().getCodeSource().getLocation().getPath()";
+        return "getClass().getProtectionDomain().getCodeSource().getLocation().getPath()";
     }
 
     public function pScalar_MagicConst_Line(Line $node)
@@ -1001,7 +1001,7 @@ class Groovy extends Standard
 
     public function pScalar_MagicConst_File(File $node)
     {
-        return $this->getTodo('__FILE__ was used') . " getClass().getProtectionDomain().getCodeSource().getLocation().getPath()";
+        return "getClass().getProtectionDomain().getCodeSource().getLocation().getPath()";
     }
 
     /**

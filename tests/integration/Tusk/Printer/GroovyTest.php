@@ -1592,10 +1592,10 @@ include 'c.php';
 include_once('d.php');
 ";
         $groovy = $this->parse($code);
-        $this->assertContains("// TODO require 'a.php'", $groovy);
-        $this->assertContains("// TODO require_once", $groovy);
-        $this->assertContains('// TODO include ', $groovy);
-        $this->assertContains('// TODO include_once', $groovy);
+        $this->assertContains("/* TODO require 'a.php'", $groovy);
+        $this->assertContains("/* TODO require_once", $groovy);
+        $this->assertContains('/* TODO include ', $groovy);
+        $this->assertContains('/* TODO include_once', $groovy);
     }
     
     public function testImportAlways()
@@ -1982,6 +1982,19 @@ class B
         $groovy = $this->parse($code);
         $this->assertContains("import static A.B.somefunc", $groovy);
         $this->assertContains("return somefunc", $groovy);
+    }
+    
+    public function testLineBreakInArrayKeyStringIsPrinted()
+    {
+                $code = "
+function x(\$string)
+{
+    return strtr(\$string, array(\"\\r\" => '\\r', \"\\n\" => '\\n'));
+}
+";
+        $groovy = $this->parse($code);
+        $this->assertContains('"\n"', $groovy);
+        $this->assertContains('\'\\\\n\'', $groovy);
     }
 }
 
