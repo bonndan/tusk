@@ -62,7 +62,8 @@ class Tusk
     {
         $code = $file->getContents();
         $state = new State($file->getFilename());
-        $state->setPackage($package);
+        if ($package)
+            $state->setPackage($package);
         $this->logger->addInfo("Reading $file");
         $groovySrc = $this->toGroovy($this->getStatements($code, $state, $this->config), $state, $this->config);
         if ($this->config->isConfigured()) {
